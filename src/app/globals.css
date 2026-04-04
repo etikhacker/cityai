@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  .font-syne { font-family: var(--font-syne), sans-serif; }
+  .font-dm   { font-family: var(--font-dm), sans-serif; }
+}
+
+@layer utilities {
+  .bg-\[\#00d4aa\]\/07 { background-color: rgb(0 212 170 / 0.07); }
+  .bg-\[\#4f8cff\]\/07 { background-color: rgb(79 140 255 / 0.07); }
+  .bg-\[\#4f8cff\]\/10 { background-color: rgb(79 140 255 / 0.1); }
+  .bg-\[\#4f8cff\]\/18 { background-color: rgb(79 140 255 / 0.18); }
+}
+
+@keyframes bounce-once {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-bounce-once { animation: bounce-once 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
