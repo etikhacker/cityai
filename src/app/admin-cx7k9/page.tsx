@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
-const ADMIN_PASSWORD = 'cityai2026'
+const ADMIN_PASSWORD = 'Asan0222'
 
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [pass, setPass] = useState('')
@@ -81,8 +81,6 @@ export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [muracietler, setMuracietler] = useState<Muraciet[]>([])
   const [loading, setLoading] = useState(true)
-
-  if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />
   const [selected, setSelected] = useState<Muraciet | null>(null)
   const [beforeFile, setBeforeFile] = useState<File | null>(null)
   const [afterFile, setAfterFile] = useState<File | null>(null)
@@ -92,7 +90,9 @@ export default function AdminPage() {
   const [result, setResult] = useState<CompareResult | null>(null)
   const [filter, setFilter] = useState('all')
 
-  useEffect(() => { fetchMuracietler() }, [])
+  useEffect(() => { if (loggedIn) fetchMuracietler() }, [loggedIn])
+
+  if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />
 
   async function fetchMuracietler() {
     setLoading(true)
