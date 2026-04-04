@@ -6,8 +6,11 @@ const syne = Syne({ subsets: ['latin'], variable: '--font-syne', weight: ['400',
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm', weight: ['300','400','500'] })
 
 export const metadata: Metadata = {
-  title: 'ASAN AI Hub — Müraciət',
+  title: 'CityAI — ASAN Müraciət',
   description: 'İnfrastruktur problemlərini bildirin, AI analiz etsin',
+  icons: {
+    icon: '/icon.png',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
