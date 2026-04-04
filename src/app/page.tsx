@@ -24,7 +24,6 @@ export default function Home() {
             <a href="#haqqinda" className="text-sm text-gray-400 hover:text-white transition-colors hidden md:block">Haqqında</a>
             <a href="#xususiyyetler" className="text-sm text-gray-400 hover:text-white transition-colors hidden md:block">Xüsusiyyətlər</a>
             <a href="#nece" className="text-sm text-gray-400 hover:text-white transition-colors hidden md:block">Necə işləyir</a>
-            <button onClick={() => router.push('/admin')}
               className="px-4 py-2 text-sm rounded-lg border border-white/10 hover:bg-white/05 transition-colors">Admin</button>
           </div>
         </div>
@@ -196,7 +195,7 @@ export default function Home() {
         <p className="text-sm text-gray-600">CityAI · ASAN AI Hub Challenge 2026 · Ömər Babayev</p>
         <div className="flex justify-center gap-6 mt-3">
           <button onClick={() => router.push('/muraciet')} className="text-xs text-gray-600 hover:text-[#00d4aa] transition-colors">Müraciət</button>
-          <button onClick={() => router.push('/admin')} className="text-xs text-gray-600 hover:text-[#00d4aa] transition-colors">Admin</button>
+           className="text-xs text-gray-600 hover:text-[#00d4aa] transition-colors">Admin</button>
         </div>
       </footer>
     </main>
