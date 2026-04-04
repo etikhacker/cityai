@@ -3,6 +3,42 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
+const ADMIN_PASSWORD = 'cityai2026'
+
+function LoginScreen({ onLogin }: { onLogin: () => void }) {
+  const [pass, setPass] = useState('')
+  const [error, setError] = useState(false)
+
+  const check = () => {
+    if (pass === ADMIN_PASSWORD) { onLogin() }
+    else { setError(true); setTimeout(() => setError(false), 2000) }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center">
+      <div className="bg-[#111827] border border-white/07 rounded-2xl p-8 w-full max-w-sm">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00d4aa] to-[#4f8cff] flex items-center justify-center font-bold text-[#0a0f1e] text-lg mx-auto mb-6">AI</div>
+        <h1 className="text-white font-bold text-xl text-center mb-1">CityAI Admin</h1>
+        <p className="text-gray-500 text-sm text-center mb-6">Şifrəni daxil edin</p>
+        <input
+          type="password"
+          value={pass}
+          onChange={e => setPass(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && check()}
+          placeholder="Şifrə..."
+          className={`w-full bg-[#1a2235] border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none mb-3 transition-colors
+            ${error ? 'border-red-500' : 'border-white/07 focus:border-[#00d4aa]/40'}`}
+        />
+        {error && <p className="text-red-400 text-xs mb-3 text-center">Şifrə səhvdir</p>}
+        <button onClick={check}
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00d4aa] to-[#00b894] text-[#0a0f1e] font-bold text-sm hover:-translate-y-0.5 transition-all">
+          Daxil ol
+        </button>
+      </div>
+    </div>
+  )
+}
+
 type Muraciet = {
   id: string
   tracking_code: string
@@ -42,8 +78,11 @@ const CAT_LABELS: Record<string, string> = {
 }
 
 export default function AdminPage() {
+  const [loggedIn, setLoggedIn] = useState(false)
   const [muracietler, setMuracietler] = useState<Muraciet[]>([])
   const [loading, setLoading] = useState(true)
+
+  if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />
   const [selected, setSelected] = useState<Muraciet | null>(null)
   const [beforeFile, setBeforeFile] = useState<File | null>(null)
   const [afterFile, setAfterFile] = useState<File | null>(null)
