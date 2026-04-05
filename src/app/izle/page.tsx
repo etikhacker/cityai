@@ -18,7 +18,7 @@ type Muraciet = {
 const STATUS_INFO: Record<string, { label: string; color: string; icon: string; desc: string }> = {
   pending:     { label: 'Gözləyir',      color: '#6b7280', icon: '⏳', desc: 'Müraciətiniz qəbul edilib, emal gözləyir.' },
   analyzing:   { label: 'Analiz edilir', color: '#3b82f6', icon: '🔍', desc: 'AI sistemi müraciətinizi analiz edir.' },
-  open:        { label: 'Açıq',          color: '#f59e0b', icon: '📋', desc: 'Müraciətiniz aidiyyəti qurama göndərilib.' },
+  open:        { label: 'Baxılır',          color: '#f59e0b', icon: '📋', desc: 'Müraciətiniz aidiyyəti qurama göndərilib.' },
   in_progress: { label: 'İcrada',        color: '#8b5cf6', icon: '🔧', desc: 'Problem üzərində iş aparılır.' },
   resolved:    { label: 'Həll edilib',   color: '#00d4aa', icon: '✅', desc: 'Problemin həll edildiyi təsdiqlənib.' },
   rejected:    { label: 'Rədd edilib',   color: '#ef4444', icon: '❌', desc: 'Müraciət rədd edilib.' },
