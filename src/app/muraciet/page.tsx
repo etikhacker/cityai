@@ -110,23 +110,7 @@ export default function MuracietPage() {
     setSubmitting(false)
   }
 }
-
-      const res = await fetch('/api/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, description, priority, location, analysis, mediaUrls }),
-      })
-      const data = await res.json()
-      if (data.success) setTrackingCode(data.tracking_code)
-      else alert(data.error || 'Xəta baş verdi')
-    } catch (e) {
-      console.error(e)
-      alert('Xəta baş verdi')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
+  
   // Success screen
   if (trackingCode) {
     return (
