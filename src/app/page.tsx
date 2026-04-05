@@ -49,6 +49,10 @@ export default function Home() {
               className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#00d4aa] to-[#00b894] text-[#0a0f1e] font-bold text-base hover:-translate-y-0.5 transition-all">
               Müraciət et →
             </button>
+            <button onClick={() => router.push('/izle')}
+  className="px-10 py-4 rounded-xl border border-white/10 text-white font-bold text-base hover:bg-white/05 hover:-translate-y-0.5 transition-all">
+  🔍 Müraciəti izlə
+</button>
             <a href="#nece"
               className="px-8 py-4 rounded-xl border border-white/10 font-bold text-base hover:bg-white/05 hover:-translate-y-0.5 transition-all text-center">
               Necə işləyir?
