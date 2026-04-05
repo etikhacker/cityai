@@ -77,18 +77,39 @@ export default function MuracietPage() {
   }
 
   const handleSubmit = async () => {
-    if (!category) return alert('Kateqoriya seçin')
-    setSubmitting(true)
+  if (!category) return alert('Kateqoriya seçin')
+  setSubmitting(true)
 
-    try {
-      // Upload files to Supabase Storage
-      const mediaUrls: string[] = []
-      for (const file of files) {
-        const ext = file.name.split('.').pop()
-        const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-        const { error } = await supabase.storage.from('muraciet-media').upload(path, file)
-        if (!error) mediaUrls.push(path)
-      }
+  try {
+    // Upload files
+    const mediaUrls: string[] = []
+    for (const file of files) {
+      const ext = file.name.split('.').pop()
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error } = await supabase.storage.from('muraciet-media').upload(path, file)
+      if (!error) mediaUrls.push(path)
+    }
+
+    // Submit — analysis xətası olsa da davam et
+    const res = await fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        category, description, priority, location, 
+        analysis: analysis || null,  // null olsa da göndər
+        mediaUrls 
+      }),
+    })
+    const data = await res.json()
+    if (data.success) setTrackingCode(data.tracking_code)
+    else alert(data.error || 'Xəta baş verdi')
+  } catch (e) {
+    console.error(e)
+    alert('Xəta baş verdi')
+  } finally {
+    setSubmitting(false)
+  }
+}
 
       const res = await fetch('/api/submit', {
         method: 'POST',
