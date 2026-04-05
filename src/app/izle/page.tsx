@@ -147,7 +147,7 @@ export default function IzlePage() {
                   { label: 'Kateqoriya', value: CAT_LABELS[muraciet.category] || muraciet.category },
                   { label: 'Prioritet', value: PRIORITY_LABELS[muraciet.priority] },
                   { label: 'Yer', value: muraciet.location || '—' },
-                  { label: 'Tarix', value: new Date(muraciet.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) },
+                  { label: 'Tarix', value: (() => { const d = new Date(muraciet.created_at); return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()}` })() },
                 ].map((r, i) => (
                   <div key={i} className="flex justify-between items-start gap-4 py-2 border-b border-white/05 last:border-0">
                     <span className="text-xs text-gray-500 flex-shrink-0">{r.label}</span>
