@@ -160,7 +160,6 @@ export default function MuracietPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-[#4f8cff] inline-block" />Şəkil analizi hazır
           </span>
           <span className="px-3 py-1 rounded-full text-xs border border-white/10 text-gray-500">
-            Son tarix: 20 aprel 2026
           </span>
         </div>
 
