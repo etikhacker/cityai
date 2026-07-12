@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="az" className={`${syne.variable} ${dmSans.variable}`}>
+    <html lang="az" className={`${syne.variable} ${dmSans.variable} bg-background`}>
       <body className="font-dm antialiased">{children}</body>
     </html>
   )
