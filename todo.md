@@ -8,3 +8,4 @@
 - [x] Gemini açarının yalnız server sorğu başlığında saxlanmasını yoxlayan testlər əlavə edildi
 - [x] Müraciət səhifəsinə AI konfiqurasiya və analiz xətası üçün görünən vəziyyət əlavə edildi
 - [ ] Hosting mühitinə GEMINI_API_KEY, NEXT_PUBLIC_SUPABASE_URL və NEXT_PUBLIC_SUPABASE_ANON_KEY dəyərlərini əlavə etmək
+- [x] CityAI favicon və layihə ikonunun Vercel/brauzerdə görünməməsi səbəbini yoxlamaq və düzəltmək
