@@ -12,5 +12,5 @@
 - [x] CityAI ana səhifəsinin hero dizaynını yüklənmiş referens komponentdəki foto fon, gradient scrim, serif başlıq və parlaq CTA dilinə uyğun yeniləmək
 - [x] CityAI əsas CTA düymələrini referensdəki qara metal pill, dərin kölgə və ripple reaksiyalı üsluba uyğunlaşdırmaq
 - [x] Ana səhifənin alt `Müraciətə keç` CTA düyməsini metal button sistemi ilə vahidləşdirmək və bütün əsas CTA-ları canlıda yoxlamaq
-- [ ] `Problemi bildir` müraciət səhifəsinin əsas submit CTA-sını metal düymə üslubuna keçirmək
-- [ ] Metal düymələrin palitrasını CityAI-nin cyan–teal vizual dilinə uyğunlaşdırmaq
+- [x] `Problemi bildir` müraciət səhifəsinin əsas submit CTA-sını metal düymə üslubuna keçirmək
+- [x] Metal düymələrin palitrasını CityAI-nin cyan–teal vizual dilinə uyğunlaşdırmaq
