@@ -9,3 +9,4 @@
 - [x] Müraciət səhifəsinə AI konfiqurasiya və analiz xətası üçün görünən vəziyyət əlavə edildi
 - [ ] Hosting mühitinə GEMINI_API_KEY, NEXT_PUBLIC_SUPABASE_URL və NEXT_PUBLIC_SUPABASE_ANON_KEY dəyərlərini əlavə etmək
 - [x] CityAI favicon və layihə ikonunun Vercel/brauzerdə görünməməsi səbəbini yoxlamaq və düzəltmək
+- [x] CityAI ana səhifəsinin hero dizaynını yüklənmiş referens komponentdəki foto fon, gradient scrim, serif başlıq və parlaq CTA dilinə uyğun yeniləmək

@@ -26,9 +26,78 @@ body {
 @layer base {
   .font-syne { font-family: var(--font-syne), sans-serif; }
   .font-dm { font-family: var(--font-dm), sans-serif; }
+  .font-averia { font-family: var(--font-averia), ui-serif, Georgia, serif; }
 }
 
 @layer components {
+  .city-immersive-hero {
+    background-color: #06101d;
+    background-image:
+      linear-gradient(180deg, rgba(3, 13, 27, .24) 0%, rgba(3, 13, 27, .42) 40%, rgba(3, 13, 27, .86) 100%),
+      linear-gradient(90deg, rgba(3, 13, 27, .78) 0%, rgba(3, 13, 27, .20) 60%, rgba(3, 13, 27, .48) 100%),
+      url('/cityai-hero-urban-night.jpg');
+    background-position: center, center, center;
+    background-size: cover;
+  }
+
+  .city-hero-grain {
+    background-image:
+      radial-gradient(circle at 50% 48%, transparent 0%, rgba(1, 8, 18, .12) 44%, rgba(1, 8, 18, .56) 100%),
+      linear-gradient(90deg, rgba(103, 232, 249, .05) 1px, transparent 1px),
+      linear-gradient(rgba(103, 232, 249, .045) 1px, transparent 1px);
+    background-size: auto, 68px 68px, 68px 68px;
+    mask-image: linear-gradient(to bottom, black, transparent 28%, transparent 72%, black);
+    opacity: .78;
+  }
+
+  .city-hero-content {
+    animation: city-hero-rise .78s cubic-bezier(.22, 1, .36, 1) both;
+  }
+
+  .city-hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    border: 1px solid rgba(255, 255, 255, .23);
+    border-radius: 999px;
+    background: rgba(7, 22, 40, .35);
+    padding: .48rem .8rem;
+    color: rgba(255, 255, 255, .78);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    backdrop-filter: blur(12px);
+  }
+
+  .city-hero-accent {
+    background: linear-gradient(105deg, #e8fffd 14%, #73f7e4 52%, #b7e8ff 92%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .city-hero-cta,
+  .city-header-cta {
+    position: relative;
+    overflow: hidden;
+    background-image:
+      radial-gradient(112% 112% at 70% 90%, rgba(255, 255, 255, .46) 0%, rgba(255, 255, 255, 0) 55%),
+      linear-gradient(118deg, #178ddd 0%, #1e36dc 100%);
+    box-shadow: 18px 18px 30px rgba(4, 24, 89, .23), inset -2px -2px 4px rgba(185, 229, 255, .38), inset 2px 2px 5px rgba(14, 25, 135, .20);
+  }
+
+  .city-hero-cta::after,
+  .city-header-cta::after {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    border-radius: inherit;
+    opacity: .55;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .38), transparent 48%);
+    pointer-events: none;
+  }
+
   .city-grid {
     background-image:
       linear-gradient(rgba(148, 163, 184, .06) 1px, transparent 1px),
@@ -78,9 +147,18 @@ body {
 
 .animate-bounce-once { animation: bounce-once .5s cubic-bezier(.34, 1.56, .64, 1) both; }
 
+@keyframes city-hero-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .city-float { animation: city-float 7s ease-in-out infinite; }
   @keyframes city-float {
     50% { transform: translateY(-10px); }
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-hero-content { animation: none; }
 }

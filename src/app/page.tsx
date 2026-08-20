@@ -30,57 +30,29 @@ export default function Home() {
     <main className="min-h-screen overflow-hidden bg-[#07111f] text-white">
       <SiteHeader />
 
-      <section className="relative isolate">
-        <div className="city-grid absolute inset-0 -z-20 opacity-70" />
-        <div className="city-orb absolute -right-36 top-12 -z-10 h-80 w-80 rounded-full bg-cyan-400/20" />
-        <div className="city-orb absolute -left-28 top-72 -z-10 h-80 w-80 rounded-full bg-teal-400/15" />
-
-        <div className="mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-16 sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:gap-16 lg:pb-28 lg:pt-24">
-          <div className="max-w-2xl">
-            <div className="city-eyebrow"><span className="h-1.5 w-1.5 rounded-full bg-teal-300" />Şəhər üçün vizual AI</div>
-            <h1 className="font-syne mt-6 text-5xl font-bold leading-[.98] tracking-[-.055em] text-white sm:text-6xl lg:text-7xl">
-              Şəhərinizdəki problemi <span className="bg-gradient-to-r from-teal-200 via-cyan-200 to-sky-300 bg-clip-text text-transparent">görünən edin.</span>
-            </h1>
-            <p className="mt-7 max-w-xl text-base leading-8 text-slate-300 sm:text-lg">
-              CityAI, şəhər infrastrukturundakı problemi şəkildən analiz etməyə və müraciəti daha aydın, ardıcıl formada göndərməyə kömək edir.
-            </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link href="/muraciet" className="inline-flex items-center justify-center gap-3 rounded-2xl bg-teal-300 px-6 py-4 text-sm font-bold text-slate-950 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-teal-200 active:scale-[.97]">
-                Şəkli analiz et <span aria-hidden="true">→</span>
-              </Link>
-              <Link href="/izle" className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/[.035] px-6 py-4 text-sm font-bold text-white transition-colors hover:bg-white/[.09]">
-                Müraciəti izlə
-              </Link>
-            </div>
-            <p className="mt-5 text-xs leading-5 text-slate-400">Şəkil analizi yalnız müraciəti sürətləndirmək üçün köməkçi nəticə yaradır; son məlumatı göndərməzdən əvvəl siz yoxlayırsınız.</p>
+      <section className="city-immersive-hero relative isolate flex min-h-[calc(100svh-72px)] items-center justify-center overflow-hidden px-5 py-20 sm:px-8">
+        <div className="city-hero-grain absolute inset-0 -z-10" aria-hidden="true" />
+        <div className="city-hero-content mx-auto max-w-4xl text-center">
+          <div className="city-hero-eyebrow"><span className="h-1.5 w-1.5 rounded-full bg-cyan-200" />Şəhər üçün vizual AI</div>
+          <h1 className="font-averia mt-6 text-balance text-[clamp(3.25rem,9vw,7rem)] font-normal leading-[.92] tracking-[-.055em] text-white">
+            Şəhərdəki problemi <span className="city-hero-accent">görünən edin.</span>
+          </h1>
+          <p className="mx-auto mt-7 max-w-2xl text-pretty text-base leading-8 text-white/78 sm:text-lg">
+            CityAI, şəhər infrastrukturundakı problemi şəkildən analiz etməyə və müraciəti daha aydın, ardıcıl formada göndərməyə kömək edir.
+          </p>
+          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link href="/muraciet" className="city-hero-cta inline-flex items-center justify-center gap-3 rounded-[10px] px-6 py-3.5 text-[15px] font-bold text-white active:scale-[.97]">
+              Şəkli analiz et <span aria-hidden="true">→</span>
+            </Link>
+            <Link href="/izle" className="inline-flex items-center justify-center rounded-[10px] border border-white/25 bg-white/[.055] px-6 py-3.5 text-[15px] font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/[.14]">
+              Müraciəti izlə
+            </Link>
           </div>
-
-          <div className="city-float city-surface relative overflow-hidden rounded-[28px] p-4 sm:p-5">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-200/60 to-transparent" />
-            <div className="rounded-[20px] border border-white/10 bg-[#071322] p-5 sm:p-6">
-              <div className="flex items-center justify-between border-b border-white/10 pb-5">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[.14em] text-teal-200">Canlı analiz nümunəsi</p>
-                  <p className="mt-1 text-sm text-slate-400">Şəkildən strukturlaşdırılmış nəticə</p>
-                </div>
-                <span className="rounded-full border border-teal-300/25 bg-teal-300/10 px-2.5 py-1 text-[11px] font-bold text-teal-200">AI hazır</span>
-              </div>
-              <div className="mt-5 grid gap-4 sm:grid-cols-[.9fr_1.1fr]">
-                <div className="relative min-h-48 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-950">
-                  <div className="absolute bottom-0 left-0 right-0 h-24 bg-[linear-gradient(155deg,transparent_49%,rgba(148,163,184,.45)_50%,rgba(148,163,184,.45)_52%,transparent_53%)] opacity-70" />
-                  <div className="absolute left-[23%] top-[31%] h-12 w-16 rounded-[50%] border-4 border-amber-300/80 bg-slate-950/70 shadow-[0_0_0_6px_rgba(251,191,36,.13)]" />
-                  <span className="absolute left-3 top-3 rounded-full bg-slate-950/70 px-2 py-1 text-[10px] font-semibold text-white">Yüklənən şəkil</span>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[.035] p-4">
-                  <div className="flex items-center justify-between"><span className="text-xs text-slate-400">Problem növü</span><span className="text-xs font-bold text-amber-200">Yüksək</span></div>
-                  <p className="font-syne mt-2 text-lg font-bold text-white">Yol səthinin zədəsi</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-300">Səthdə nəqliyyat üçün risk yarada biləcək dərin çuxur görünür.</p>
-                  <div className="mt-4 flex flex-wrap gap-2"><span className="rounded-full bg-teal-300/10 px-2 py-1 text-[11px] text-teal-100">yol</span><span className="rounded-full bg-sky-300/10 px-2 py-1 text-[11px] text-sky-100">təmir</span><span className="rounded-full bg-white/10 px-2 py-1 text-[11px] text-slate-200">0.93 etibar</span></div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <p className="mx-auto mt-5 max-w-xl text-xs leading-5 text-white/55">Şəkil analizi müraciəti sürətləndirmək üçün köməkçi nəticə yaradır; son məlumatı göndərməzdən əvvəl siz yoxlayırsınız.</p>
         </div>
+        <a href="#imkanlar" className="absolute bottom-7 left-1/2 hidden -translate-x-1/2 items-center gap-2 text-[11px] font-medium uppercase tracking-[.18em] text-white/55 transition-colors hover:text-white sm:flex">
+          Kəşf et <span aria-hidden="true" className="animate-bounce">↓</span>
+        </a>
       </section>
 
       <section id="imkanlar" className="border-y border-white/10 bg-[#0a1829] py-20 sm:py-24">
