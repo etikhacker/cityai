@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { LiquidMetalButton } from '@/components/LiquidMetalButton'
 import { SiteHeader } from '@/components/SiteHeader'
 
 type AiAnalysis = {
@@ -157,11 +158,15 @@ export default function MuracietPage() {
       <SiteHeader />
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-10 pb-20">
 
-        {/* Header */}
-        <header className="mb-10">
-          <span className="city-eyebrow">Vizual analiz</span>
-          <h1 className="font-syne mt-4 text-3xl font-bold tracking-[-.04em]">Şəhər problemini bildirin</h1>
-          <p className="mt-2 text-sm text-slate-400">Şəkli əlavə edin. CityAI strukturlaşdırılmış analiz təklif edəcək.</p>
+        {/* Report hero */}
+        <header className="relative mb-10 overflow-hidden rounded-[28px] border border-cyan-200/15 bg-[radial-gradient(circle_at_top_right,rgba(45,212,191,.18),transparent_42%),linear-gradient(135deg,rgba(11,39,55,.95),rgba(7,18,31,.96))] p-6 shadow-[0_20px_55px_rgba(0,0,0,.18)] sm:p-8">
+          <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-cyan-300/10 blur-3xl" aria-hidden="true" />
+          <div className="relative">
+            <span className="city-eyebrow">Vizual analiz</span>
+            <h1 className="font-averia mt-5 max-w-xl text-4xl font-normal leading-[.98] tracking-[-.04em] text-white sm:text-5xl">Şəhər problemini <span className="city-hero-accent">aydın bildirin.</span></h1>
+            <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300">Şəkli əlavə edin, CityAI-nin strukturlaşdırılmış analizini yoxlayın və müraciəti bir addımda göndərin.</p>
+            <div className="mt-6 flex flex-wrap gap-2 text-xs text-cyan-50/80"><span className="rounded-full border border-cyan-200/15 bg-cyan-200/5 px-3 py-1.5">1. Faylı əlavə edin</span><span className="rounded-full border border-cyan-200/15 bg-cyan-200/5 px-3 py-1.5">2. AI nəticəsini yoxlayın</span><span className="rounded-full border border-cyan-200/15 bg-cyan-200/5 px-3 py-1.5">3. Müraciəti göndərin</span></div>
+          </div>
         </header>
 
         {/* Status pills */}
@@ -317,23 +322,12 @@ export default function MuracietPage() {
               placeholder="Küçə, bina nömrəsi, rayon..."
               className="flex-1 bg-[#1a2235] border border-white/07 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-[#4f8cff]/40 transition-colors"
             />
-            <button
-              onClick={getLocation}
-              className="px-4 rounded-xl border border-[#4f8cff]/20 bg-[#4f8cff]/10 text-[#4f8cff] text-sm hover:bg-[#4f8cff]/18 transition-colors whitespace-nowrap"
-            >
-              📍 GPS
-            </button>
+          <button onClick={getLocation} className="city-utility-button whitespace-nowrap">📍 GPS</button>
           </div>
         </div>
 
         {/* Submit */}
-        <button
-          onClick={handleSubmit}
-          disabled={submitting || !category}
-          className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00d4aa] to-[#00b894] text-[#0a0f1e] font-bold font-syne text-base disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-[#00d4aa]/20 hover:-translate-y-0.5 transition-all active:translate-y-0"
-        >
-          {submitting ? '⏳ Göndərilir...' : 'Müraciəti göndər →'}
-        </button>
+        <LiquidMetalButton label={submitting ? '⏳ Göndərilir...' : 'Müraciəti göndər'} trailing={submitting ? undefined : '→'} onClick={handleSubmit} disabled={submitting || !category} className="w-full min-h-[54px]" />
       </div>
     </main>
   )
