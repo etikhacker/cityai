@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { SiteHeader } from '@/components/SiteHeader'
 
 type AiAnalysis = {
   problem_type: string
@@ -27,6 +28,7 @@ export default function MuracietPage() {
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
   const [analysis, setAnalysis] = useState<AiAnalysis | null>(null)
+  const [analysisError, setAnalysisError] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [category, setCategory] = useState('')
   const [description, setDescription] = useState('')
@@ -55,14 +57,28 @@ export default function MuracietPage() {
     if (imageFile) {
       setAnalyzing(true)
       setAnalysis(null)
+      setAnalysisError('')
       try {
         const fd = new FormData()
         fd.append('file', imageFile)
         const res = await fetch('/api/analyze', { method: 'POST', body: fd })
         const data = await res.json()
-        if (data.success) setAnalysis(data.analysis)
+        if (data.success) {
+          setAnalysis(data.analysis)
+          if (!category && data.analysis?.is_infrastructure) {
+            const categoryMap: Record<string, string> = {
+              'yol': 'yol', 'işıq': 'isiq', 'zibil': 'zibil', 'təmizlik': 'zibil', 'su': 'su', 'kanalizasiya': 'su', 'yaşıllıq': 'yasilliq',
+            }
+            const detected = Object.entries(categoryMap).find(([keyword]) => data.analysis.problem_type.toLowerCase().includes(keyword))?.[1]
+            if (detected) setCategory(detected)
+          }
+          if (!description) setDescription(data.analysis.description)
+        } else {
+          setAnalysisError(data.error || 'Şəkil analizi başa çatmadı.')
+        }
       } catch (e) {
         console.error(e)
+        setAnalysisError('Şəkil analizi xidməti ilə əlaqə qurmaq alınmadı.')
       } finally {
         setAnalyzing(false)
       }
@@ -114,7 +130,7 @@ export default function MuracietPage() {
   // Success screen
   if (trackingCode) {
     return (
-      <main className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-6">
+      <main className="min-h-screen bg-[#07111f] flex items-center justify-center p-6">
         <div className="text-center max-w-md">
           <div className="w-20 h-20 rounded-full border-2 border-[#00d4aa] bg-[#00d4aa]/10 flex items-center justify-center text-4xl mx-auto mb-6 animate-bounce-once">
             ✓
@@ -133,22 +149,19 @@ export default function MuracietPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0f1e] text-white">
+    <main className="min-h-screen bg-[#07111f] text-white">
       {/* Background grid */}
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none"
         style={{ backgroundImage: 'linear-gradient(#00d4aa 1px,transparent 1px),linear-gradient(90deg,#00d4aa 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
 
+      <SiteHeader />
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-10 pb-20">
 
         {/* Header */}
-        <header className="flex items-center gap-4 mb-10">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00d4aa] to-[#4f8cff] flex items-center justify-center font-bold text-[#0a0f1e] text-lg font-syne">
-            AI
-          </div>
-          <div>
-            <h1 className="text-xl font-bold font-syne">ASAN AI Hub</h1>
-            <p className="text-sm text-gray-500">İnfrastruktur problemlərini bildirin</p>
-          </div>
+        <header className="mb-10">
+          <span className="city-eyebrow">Vizual analiz</span>
+          <h1 className="font-syne mt-4 text-3xl font-bold tracking-[-.04em]">Şəhər problemini bildirin</h1>
+          <p className="mt-2 text-sm text-slate-400">Şəkli əlavə edin. CityAI strukturlaşdırılmış analiz təklif edəcək.</p>
         </header>
 
         {/* Status pills */}
@@ -205,7 +218,7 @@ export default function MuracietPage() {
           )}
 
           {/* AI analysis result */}
-          {(analyzing || analysis) && (
+          {(analyzing || analysis || analysisError) && (
             <div className="mt-4 border-t border-white/07 pt-4">
               <div className="bg-gradient-to-r from-[#00d4aa]/05 to-[#4f8cff]/05 border border-[#00d4aa]/15 rounded-xl p-4 flex gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00d4aa] to-[#4f8cff] flex items-center justify-center text-sm flex-shrink-0">
@@ -226,7 +239,7 @@ export default function MuracietPage() {
                         ))}
                       </div>
                     </>
-                  ) : null}
+                  ) : <p className="text-amber-200 text-sm leading-relaxed">{analysisError}</p>}
                 </div>
               </div>
             </div>

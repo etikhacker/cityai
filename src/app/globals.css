@@ -2,9 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --city-ink: #07111f;
+  --city-panel: #0d1b2d;
+  --city-panel-strong: #10223a;
+  --city-line: rgba(226, 232, 240, 0.12);
+  --city-text: #f8fafc;
+  --city-muted: #9fb0c7;
+  --city-mint: #5eead4;
+  --city-sky: #7dd3fc;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  min-height: 100vh;
+  background: var(--city-ink);
+  color: var(--city-text);
+}
+
 @layer base {
   .font-syne { font-family: var(--font-syne), sans-serif; }
-  .font-dm   { font-family: var(--font-dm), sans-serif; }
+  .font-dm { font-family: var(--font-dm), sans-serif; }
+}
+
+@layer components {
+  .city-grid {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, .06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, .06) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .city-orb {
+    filter: blur(100px);
+    pointer-events: none;
+  }
+
+  .city-surface {
+    border: 1px solid var(--city-line);
+    background: linear-gradient(145deg, rgba(20, 38, 62, .88), rgba(11, 25, 43, .86));
+    box-shadow: 0 20px 70px rgba(0, 0, 0, .17);
+  }
+
+  .city-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    border: 1px solid rgba(94, 234, 212, .24);
+    border-radius: 999px;
+    background: rgba(45, 212, 191, .08);
+    padding: .45rem .75rem;
+    color: var(--city-mint);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
 }
 
 @layer utilities {
@@ -15,8 +71,16 @@
 }
 
 @keyframes bounce-once {
-  0%   { transform: scale(0.5); opacity: 0; }
-  60%  { transform: scale(1.1); }
+  0% { transform: scale(.5); opacity: 0; }
+  60% { transform: scale(1.1); }
   100% { transform: scale(1); opacity: 1; }
 }
-.animate-bounce-once { animation: bounce-once 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+
+.animate-bounce-once { animation: bounce-once .5s cubic-bezier(.34, 1.56, .64, 1) both; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .city-float { animation: city-float 7s ease-in-out infinite; }
+  @keyframes city-float {
+    50% { transform: translateY(-10px); }
+  }
+}

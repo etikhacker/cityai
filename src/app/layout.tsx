@@ -2,15 +2,13 @@ import type { Metadata } from 'next'
 import { Syne, DM_Sans } from 'next/font/google'
 import './globals.css'
 
-const syne = Syne({ subsets: ['latin'], variable: '--font-syne', weight: ['400','600','700','800'] })
-const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm', weight: ['300','400','500'] })
+const syne = Syne({ subsets: ['latin'], variable: '--font-syne', weight: ['400', '600', '700', '800'] })
+const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm', weight: ['400', '500', '700'] })
 
 export const metadata: Metadata = {
-  title: 'CityAI — ASAN Müraciət',
-  description: 'İnfrastruktur problemlərini bildirin, AI analiz etsin',
-  icons: {
-    icon: '/icon.png',
-  },
+  title: 'CityAI — Ağıllı şəhər problemi analizi',
+  description: 'Şəhər problemlərini şəkillə bildirin, Gemini ilə strukturlaşdırılmış analiz əldə edin.',
+  icons: { icon: '/icon.png' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

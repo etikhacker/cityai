@@ -1,74 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { CityAnalysisError, compareCityImages } from '@/lib/city-analysis'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 )
 
-function mockAnalysis(beforeSize: number, afterSize: number) {
-  const diff = Math.abs(beforeSize - afterSize) / Math.max(beforeSize, afterSize)
-  const isResolved = diff > 0.1
-  const score = isResolved ? Math.floor(75 + Math.random() * 20) : Math.floor(20 + Math.random() * 30)
-  return {
-    is_resolved: isResolved,
-    is_same_location: true,
-    confidence: 0.82 + Math.random() * 0.15,
-    resolution_score: score,
-    summary: isResolved
-      ? 'Şəkillər arasında əhəmiyyətli vizual fərq aşkarlandı. Problem böyük ehtimalla aradan qaldırılıb.'
-      : 'Şəkillər arasında ciddi fərq müşahidə olunmadı. Problem hələ həll olunmayıb.',
-    warning: isResolved
-      ? null
-      : 'Problem həll olunmayıb — qurum tərəfindən əlavə edilən vizual ilkin müraciətlə uyğun gəlmir.',
-  }
-}
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
-    const beforeFile = formData.get('before') as File | null
-    const afterFile = formData.get('after') as File | null
-    const muracietId = formData.get('muraciet_id') as string | null
+    const beforeFile = formData.get('before')
+    const afterFile = formData.get('after')
+    const muracietId = formData.get('muraciet_id')
 
-    if (!beforeFile || !afterFile) {
-      return NextResponse.json({ error: 'Hər iki şəkil tələb olunur' }, { status: 400 })
+    if (!(beforeFile instanceof File) || !(afterFile instanceof File)) {
+      return NextResponse.json({ error: 'Müqayisə üçün hər iki şəkil tələb olunur.', code: 'FILES_REQUIRED' }, { status: 400 })
     }
 
-    let result
-
-    if (process.env.ANTHROPIC_API_KEY) {
-      try {
-        const Anthropic = (await import('@anthropic-ai/sdk')).default
-        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-        const toBase64 = async (file: File) => Buffer.from(await file.arrayBuffer()).toString('base64')
-        const [beforeB64, afterB64] = await Promise.all([toBase64(beforeFile), toBase64(afterFile)])
-
-        const response = await anthropic.messages.create({
-          model: 'claude-opus-4-6',
-          max_tokens: 1024,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'text', text: 'BİRİNCİ şəkil — problem (before), İKİNCİ — həll (after).' },
-              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: beforeB64 } },
-              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: afterB64 } },
-              { type: 'text', text: 'Müqayisə et, yalnız JSON: {"is_resolved":bool,"is_same_location":bool,"confidence":float,"resolution_score":int,"summary":"az","warning":null}' }
-            ]
-          }]
-        })
-
-        const text = response.content[0].type === 'text' ? response.content[0].text : ''
-        const jsonMatch = text.match(/\{[\s\S]*\}/)
-        if (jsonMatch) result = JSON.parse(jsonMatch[0])
-      } catch {
-        result = mockAnalysis(beforeFile.size, afterFile.size)
-      }
-    } else {
-      result = mockAnalysis(beforeFile.size, afterFile.size)
+    if (!ALLOWED_IMAGE_TYPES.has(beforeFile.type) || !ALLOWED_IMAGE_TYPES.has(afterFile.type)) {
+      return NextResponse.json({ error: 'Yalnız dəstəklənən şəkil formatlarını müqayisə etmək olar.', code: 'UNSUPPORTED_FILE' }, { status: 415 })
     }
 
-    if (muracietId && result) {
+    if (beforeFile.size > MAX_IMAGE_SIZE_BYTES || afterFile.size > MAX_IMAGE_SIZE_BYTES) {
+      return NextResponse.json({ error: 'Hər şəkil 10 MB-dan kiçik olmalıdır.', code: 'FILE_TOO_LARGE' }, { status: 413 })
+    }
+
+    const [beforeBase64, afterBase64] = await Promise.all([
+      beforeFile.arrayBuffer().then((data) => Buffer.from(data).toString('base64')),
+      afterFile.arrayBuffer().then((data) => Buffer.from(data).toString('base64')),
+    ])
+
+    const result = await compareCityImages({
+      apiKey: process.env.GEMINI_API_KEY,
+      beforeBase64,
+      beforeMimeType: beforeFile.type,
+      afterBase64,
+      afterMimeType: afterFile.type,
+    })
+
+    if (typeof muracietId === 'string' && muracietId) {
       const ext = afterFile.name.split('.').pop() || 'jpg'
       const path = `after-${Date.now()}.${ext}`
       await supabase.storage.from('muraciet-media').upload(path, await afterFile.arrayBuffer())
@@ -79,9 +53,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, result })
-
   } catch (error) {
-    console.error('Compare error:', error)
-    return NextResponse.json({ error: 'Müqayisə zamanı xəta baş verdi' }, { status: 500 })
+    if (error instanceof CityAnalysisError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+    }
+
+    console.error('[CityAI compare] Unexpected error', error)
+    return NextResponse.json({ error: 'Müqayisə zamanı gözlənilməyən xəta baş verdi.', code: 'COMPARISON_ERROR' }, { status: 500 })
   }
 }
