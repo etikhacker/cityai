@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { LiquidMetalLink } from './LiquidMetalLink'
 
 const navigation = [
   { href: '/#imkanlar', label: 'İmkanlar' },
@@ -33,10 +34,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden md:block">
-          <Link href="/muraciet" className="city-header-cta inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-transform duration-200 hover:-translate-y-0.5 active:scale-[.97]">
-            Problemi bildir
-            <span aria-hidden="true">→</span>
-          </Link>
+          <LiquidMetalLink href="/muraciet" label="Problemi bildir" trailing="→" className="liquid-metal-button--compact" />
         </div>
 
         <button
@@ -58,9 +56,7 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <Link href="/muraciet" onClick={() => setIsOpen(false)} className="city-header-cta mt-2 rounded-xl px-4 py-3 text-center text-sm font-bold text-white">
-              Problemi bildir
-            </Link>
+            <LiquidMetalLink href="/muraciet" label="Problemi bildir" trailing="→" className="mt-2 w-full" />
           </div>
         </nav>
       )}

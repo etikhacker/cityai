@@ -10,3 +10,5 @@
 - [ ] Hosting mühitinə GEMINI_API_KEY, NEXT_PUBLIC_SUPABASE_URL və NEXT_PUBLIC_SUPABASE_ANON_KEY dəyərlərini əlavə etmək
 - [x] CityAI favicon və layihə ikonunun Vercel/brauzerdə görünməməsi səbəbini yoxlamaq və düzəltmək
 - [x] CityAI ana səhifəsinin hero dizaynını yüklənmiş referens komponentdəki foto fon, gradient scrim, serif başlıq və parlaq CTA dilinə uyğun yeniləmək
+- [x] CityAI əsas CTA düymələrini referensdəki qara metal pill, dərin kölgə və ripple reaksiyalı üsluba uyğunlaşdırmaq
+- [x] Ana səhifənin alt `Müraciətə keç` CTA düyməsini metal button sistemi ilə vahidləşdirmək və bütün əsas CTA-ları canlıda yoxlamaq

@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { LiquidMetalLink } from '@/components/LiquidMetalLink'
 import { SiteHeader } from '@/components/SiteHeader'
 
 const capabilities = [
@@ -41,12 +41,8 @@ export default function Home() {
             CityAI, şəhər infrastrukturundakı problemi şəkildən analiz etməyə və müraciəti daha aydın, ardıcıl formada göndərməyə kömək edir.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/muraciet" className="city-hero-cta inline-flex items-center justify-center gap-3 rounded-[10px] px-6 py-3.5 text-[15px] font-bold text-white active:scale-[.97]">
-              Şəkli analiz et <span aria-hidden="true">→</span>
-            </Link>
-            <Link href="/izle" className="inline-flex items-center justify-center rounded-[10px] border border-white/25 bg-white/[.055] px-6 py-3.5 text-[15px] font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/[.14]">
-              Müraciəti izlə
-            </Link>
+            <LiquidMetalLink href="/muraciet" label="Şəkli analiz et" trailing="→" className="min-w-[164px]" />
+            <LiquidMetalLink href="/izle" label="Müraciəti izlə" className="min-w-[164px] liquid-metal-button--quiet" />
           </div>
           <p className="mx-auto mt-5 max-w-xl text-xs leading-5 text-white/55">Şəkil analizi müraciəti sürətləndirmək üçün köməkçi nəticə yaradır; son məlumatı göndərməzdən əvvəl siz yoxlayırsınız.</p>
         </div>
@@ -80,7 +76,7 @@ export default function Home() {
       </section>
 
       <section className="mx-5 mb-12 overflow-hidden rounded-[28px] border border-teal-200/15 bg-[radial-gradient(circle_at_top_right,rgba(45,212,191,.19),transparent_38%),linear-gradient(135deg,#0d2639,#0a1829)] sm:mx-8 lg:mx-auto lg:max-w-7xl">
-        <div className="grid gap-8 px-6 py-10 sm:px-10 sm:py-14 md:grid-cols-[1fr_auto] md:items-center"><div><p className="text-sm font-bold uppercase tracking-[.12em] text-teal-200">CityAI ilə başla</p><h2 className="font-syne mt-3 text-3xl font-bold tracking-[-.04em] text-white">Şəkli yükləyin, problemi birlikdə aydınlaşdıraq.</h2></div><Link href="/muraciet" className="inline-flex h-fit items-center justify-center rounded-2xl bg-white px-6 py-4 text-sm font-bold text-slate-950 transition-transform hover:-translate-y-0.5 hover:bg-teal-100 active:scale-[.97]">Müraciətə keç →</Link></div>
+        <div className="grid gap-8 px-6 py-10 sm:px-10 sm:py-14 md:grid-cols-[1fr_auto] md:items-center"><div><p className="text-sm font-bold uppercase tracking-[.12em] text-teal-200">CityAI ilə başla</p><h2 className="font-syne mt-3 text-3xl font-bold tracking-[-.04em] text-white">Şəkli yükləyin, problemi birlikdə aydınlaşdıraq.</h2></div><LiquidMetalLink href="/muraciet" label="Müraciətə keç" trailing="→" className="h-fit justify-self-start md:justify-self-end" /></div>
       </section>
 
       <footer className="border-t border-white/10 py-8 text-center text-sm text-slate-500">CityAI · Şəhər problemləri üçün məsuliyyətli AI dəstəyi</footer>
