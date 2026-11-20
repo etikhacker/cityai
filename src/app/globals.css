@@ -53,6 +53,32 @@
   background-color: #FFFFFF;
   border: 1px solid #E2E8E8;
   box-shadow: 0 1px 3px rgba(16, 42, 53, 0.04), 0 4px 12px rgba(16, 42, 53, 0.02);
+  transform-style: preserve-3d;
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.civic-surface:hover {
+  transform: perspective(1000px) translateY(-3px) rotateX(0.35deg);
+  box-shadow: 0 8px 24px rgba(16, 42, 53, 0.08), 0 2px 6px rgba(16, 42, 53, 0.04);
+}
+
+.motion-heading {
+  animation: civic-heading-enter 700ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+  transform-origin: 50% 100%;
+  text-shadow: 0 1px 0 rgba(16, 42, 53, 0.06), 0 8px 24px rgba(16, 42, 53, 0.08);
+}
+
+.complaint-page {
+  background-color: #F7F9FB;
+  background-image: linear-gradient(rgba(247, 249, 251, 0.88), rgba(247, 249, 251, 0.94)), url('/cityai-hero-urban-night.jpg');
+  background-position: center, center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+@keyframes civic-heading-enter {
+  from { opacity: 0; transform: perspective(900px) rotateX(-12deg) translateY(18px); }
+  to { opacity: 1; transform: perspective(900px) rotateX(0) translateY(0); }
 }
 
 .civic-input {
@@ -77,4 +103,11 @@
   html {
     scroll-behavior: auto;
   }
+  .motion-heading { animation: none; }
+  .civic-surface { transition: none; }
+  .civic-surface:hover { transform: none; }
+}
+
+@media (max-width: 767px) {
+  .complaint-page { background-attachment: scroll; }
 }

@@ -84,7 +84,7 @@ export default function HomePage() {
                   <p className="text-sm font-medium text-[#087F70]">
                     Şəhər infrastrukturu üçün rəqəmsal müraciət sistemi
                   </p>
-                  <h1 className="font-display mt-4 max-w-2xl text-balance text-[clamp(2.25rem,4vw,3.5rem)] font-bold leading-[1.12] tracking-[-0.03em] text-[#102A35]">
+                  <h1 className="motion-heading font-display mt-4 max-w-2xl text-balance text-[clamp(2.25rem,4vw,3.5rem)] font-bold leading-[1.12] tracking-[-0.03em] text-[#102A35]">
                     Şəhərdəki problemi görünən edin.
                   </h1>
                   <p className="mt-5 max-w-xl text-base leading-relaxed text-[#475569] sm:text-lg">

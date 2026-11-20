@@ -22,7 +22,6 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { CategoryIcon } from '@/components/StatusBadge';
 import { supabase } from '@/lib/supabase';
 import {
-  BAKU_DISTRICTS,
   CATEGORIES,
   PRIORITY_CONFIG,
   type CategoryId,
@@ -44,7 +43,6 @@ export default function MuracietPage() {
   const [category, setCategory] = useState<CategoryId | ''>('');
   const [priority, setPriority] = useState<PriorityLevel>('medium');
   const [description, setDescription] = useState('');
-  const [district, setDistrict] = useState('Nəsimi rayonu');
   const [location, setLocation] = useState('');
 
   const [locating, setLocating] = useState(false);
@@ -191,7 +189,6 @@ export default function MuracietPage() {
           category,
           description: description.trim(),
           priority,
-          district,
           location: location.trim(),
           analysis,
           mediaUrls,
@@ -244,7 +241,7 @@ export default function MuracietPage() {
 
   if (trackingCode) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F7F9FB] text-[#102A35]">
+      <div className="complaint-page flex min-h-screen flex-col text-[#102A35]">
         <SiteHeader />
         <main className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-14 sm:px-6">
           <div className="civic-surface w-full rounded-[16px] p-8 text-center sm:p-10">
@@ -315,14 +312,14 @@ export default function MuracietPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F9FB] text-[#102A35]">
+    <div className="complaint-page flex min-h-screen flex-col text-[#102A35]">
       <SiteHeader />
 
       <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-10 sm:px-6 lg:px-8">
         {/* Page Heading */}
         <div className="border-b border-[#E2E8E8] pb-6">
           <p className="text-sm font-semibold text-[#087F70]">Yeni müraciət</p>
-          <h1 className="font-display mt-1.5 text-3xl font-bold tracking-[-0.025em] text-[#102A35] sm:text-4xl">
+          <h1 className="motion-heading font-display mt-1.5 text-3xl font-bold tracking-[-0.025em] text-[#102A35] sm:text-4xl">
             İnfrastruktur problemini bildirin
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#475569] sm:text-base">
@@ -616,28 +613,7 @@ export default function MuracietPage() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label
-                      htmlFor="complaint-district"
-                      className="block text-[13px] font-semibold text-[#102A35]"
-                    >
-                      Rayon
-                    </label>
-                    <select
-                      id="complaint-district"
-                      value={district}
-                      onChange={(e) => setDistrict(e.target.value)}
-                      className="civic-input mt-2 h-12 w-full px-3.5 text-sm"
-                    >
-                      {BAKU_DISTRICTS.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
+                  <div className="sm:col-span-2">
                     <label
                       htmlFor="complaint-location"
                       className="block text-[13px] font-semibold text-[#102A35]"
@@ -696,10 +672,6 @@ export default function MuracietPage() {
                 <span className="text-xs font-semibold text-[#102A35]">
                   {PRIORITY_CONFIG[priority].label}
                 </span>
-              </li>
-              <li className="flex items-center justify-between py-2.5">
-                <span className="text-[#475569]">Rayon</span>
-                <span className="text-xs font-semibold text-[#102A35]">{district}</span>
               </li>
             </ul>
 
