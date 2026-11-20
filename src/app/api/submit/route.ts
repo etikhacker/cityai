@@ -15,7 +15,7 @@ function generateTrackingCode(): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { category, description, priority, location, analysis, mediaUrls } = body
+    const { category, description, priority, location, analysis, mediaUrls, mediaTypes } = body
 
     if (!category) {
       return NextResponse.json({ error: 'Kateqoriya seçilməyib' }, { status: 400 })
@@ -53,10 +53,10 @@ export async function POST(req: NextRequest) {
 
     // 3. Insert media fayllar (əgər varsa)
     if (mediaUrls && mediaUrls.length > 0 && muraciet) {
-      const mediaRows = mediaUrls.map((path: string) => ({
+      const mediaRows = mediaUrls.map((path: string, index: number) => ({
         muraciet_id: muraciet.id,
         storage_path: path,
-        file_type: 'image',
+        file_type: mediaTypes?.[index] === 'video' ? 'video' : 'image',
         is_before: true,
       }))
       await supabase.from('media_fayllar').insert(mediaRows)

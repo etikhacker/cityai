@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -15,6 +15,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Video,
   X,
 } from 'lucide-react';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -30,11 +31,17 @@ import {
 } from '@/lib/types';
 
 const PRIORITIES: PriorityLevel[] = ['low', 'medium', 'high', 'critical'];
+const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+const VIDEO_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
 
 export default function MuracietPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const videoPreviewUrls = useRef(new Set<string>());
   const [dragOver, setDragOver] = useState(false);
+  const [mediaError, setMediaError] = useState('');
 
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<CityAnalysis | null>(null);
@@ -96,36 +103,58 @@ export default function MuracietPage() {
 
   const handleFiles = useCallback(
     async (incoming: FileList | File[]) => {
-      const valid = Array.from(incoming).filter((f) => f.type.startsWith('image/'));
+      const selected = Array.from(incoming);
+      const supported = selected.filter((file) => IMAGE_TYPES.has(file.type) || VIDEO_TYPES.has(file.type));
+      const valid = supported.filter((file) =>
+        file.size <= (VIDEO_TYPES.has(file.type) ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)
+      );
+      if (valid.length !== selected.length) {
+        setMediaError('Şəkillər 10 MB, videolar isə 20 MB-dan kiçik olmalıdır. JPEG, PNG, WEBP, MP4, WEBM və MOV formatlarından istifadə edin.');
+      }
       if (!valid.length) {
-        setAnalysisError('Zəhmət olmasa yalnız JPEG, PNG və ya WEBP formatlı şəkil seçin.');
+        if (!selected.length) setMediaError('Şəkil və ya video seçin.');
         return;
       }
 
       const nextFiles = [...files, ...valid].slice(0, 5);
+      const addedFiles = nextFiles.slice(files.length);
+      if (nextFiles.length < files.length + valid.length) {
+        setMediaError('Bir müraciətə ən çox 5 şəkil və ya video əlavə etmək olar.');
+      } else if (valid.length === selected.length) {
+        setMediaError('');
+      }
       setFiles(nextFiles);
 
       const readPreviews = await Promise.all(
-        valid.map(
-          (file) =>
-            new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (e) => resolve((e.target?.result as string) || '');
-              reader.readAsDataURL(file);
-            })
-        )
+        addedFiles.map((file) => {
+          if (VIDEO_TYPES.has(file.type)) {
+            const url = URL.createObjectURL(file);
+            videoPreviewUrls.current.add(url);
+            return Promise.resolve(url);
+          }
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve((e.target?.result as string) || '');
+            reader.readAsDataURL(file);
+          });
+        })
       );
 
       setPreviews((prev) => [...prev, ...readPreviews].slice(0, 5));
 
-      if (!analysis && valid[0]) {
-        await runAnalysis(valid[0], category, description);
+      const imageToAnalyze = [...files, ...addedFiles].find((file) => IMAGE_TYPES.has(file.type));
+      if (!analysis && imageToAnalyze) {
+        await runAnalysis(imageToAnalyze, category, description);
       }
     },
     [analysis, category, description, files, runAnalysis]
   );
 
   const removeFile = (index: number) => {
+    if (VIDEO_TYPES.has(files[index]?.type) && previews[index]) {
+      URL.revokeObjectURL(previews[index]);
+      videoPreviewUrls.current.delete(previews[index]);
+    }
     setFiles((prev) => prev.filter((_, i) => i !== index));
     setPreviews((prev) => prev.filter((_, i) => i !== index));
   };
@@ -174,12 +203,18 @@ export default function MuracietPage() {
     setSubmitting(true);
     try {
       const mediaUrls: string[] = [];
+      const mediaTypes: Array<'image' | 'video'> = [];
       for (const file of files) {
-        const extension = file.name.split('.').pop() || 'jpg';
+        const mediaType = VIDEO_TYPES.has(file.type) ? 'video' : 'image';
+        const extension = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1] || 'jpg';
         const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-        const { error } = await supabase.storage.from('muraciet-media').upload(path, file);
+        const { error } = await supabase.storage.from('muraciet-media').upload(path, file, {
+          contentType: file.type,
+          upsert: false,
+        });
         if (error) throw error;
         mediaUrls.push(path);
+        mediaTypes.push(mediaType);
       }
 
       const res = await fetch('/api/submit', {
@@ -192,6 +227,7 @@ export default function MuracietPage() {
           location: location.trim(),
           analysis,
           mediaUrls,
+          mediaTypes,
         }),
       });
       const data = (await res.json()) as {
@@ -232,12 +268,24 @@ export default function MuracietPage() {
     setCategory('');
     setPriority('medium');
     setDescription('');
+    previews.forEach((preview, index) => {
+      if (VIDEO_TYPES.has(files[index]?.type)) {
+        URL.revokeObjectURL(preview);
+        videoPreviewUrls.current.delete(preview);
+      }
+    });
+    setMediaError('');
     setLocation('');
     setSubmitError('');
     setTrackingCode('');
   };
 
   const selectedCategoryMeta = CATEGORIES.find((c) => c.id === category);
+
+  useEffect(() => () => {
+    videoPreviewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    videoPreviewUrls.current.clear();
+  }, []);
 
   if (trackingCode) {
     return (
@@ -345,7 +393,7 @@ export default function MuracietPage() {
                     Fotoşəkil əlavə edin
                   </h2>
                 </div>
-                <span className="text-xs text-[#64748B]">Maks. 5 şəkil · 10 MB</span>
+                <span className="text-xs text-[#64748B]">Maks. 5 fayl · şəkil 10 MB, video 20 MB</span>
               </div>
 
               <div
@@ -368,21 +416,28 @@ export default function MuracietPage() {
                 <input
                   type="file"
                   multiple
-                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/webm,video/quicktime"
                   onChange={(e) => e.target.files && void handleFiles(e.target.files)}
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  aria-label="Şəkil fayllarını seçin"
+                  aria-label="Şəkil və ya video fayllarını seçin"
                 />
-                <div className="mx-auto grid h-11 w-11 place-items-center rounded-xl border border-[#E2E8E8] bg-white text-[#087F70]">
+                <div className="mx-auto flex h-11 w-11 items-center justify-center gap-0.5 rounded-xl border border-[#E2E8E8] bg-white text-[#087F70]">
                   <ImagePlus className="h-5 w-5" aria-hidden="true" />
+                  <Video className="h-3.5 w-3.5" aria-hidden="true" />
                 </div>
                 <p className="mt-3 text-sm font-semibold text-[#102A35]">
-                  Şəkli bura sürükləyin və ya cihazdan seçin
+                  Şəkil və ya videonu bura sürükləyin və ya cihazdan seçin
                 </p>
                 <p className="mt-1 text-xs text-[#64748B]">
-                  JPEG, PNG, WEBP dəstəklənir. İlk şəkil yükləndikdə ilkin AI təhlili başlayır.
+                  JPEG, PNG, WEBP, MP4, WEBM və MOV dəstəklənir. İlk şəkil yüklənəndə ilkin AI təhlili başlayır.
                 </p>
               </div>
+
+              {mediaError && (
+                <p role="alert" className="mt-3 text-xs font-medium text-[#B45309]">
+                  {mediaError}
+                </p>
+              )}
 
               {/* Thumbnail Previews */}
               {previews.length > 0 && (
@@ -392,13 +447,24 @@ export default function MuracietPage() {
                       key={idx}
                       className="group relative aspect-square overflow-hidden rounded-lg border border-[#E2E8E8] bg-[#F2F4F6]"
                     >
-                      <Image
-                        src={src}
-                        alt={`Yüklənmiş şəkil ${idx + 1}`}
-                        fill
-                        referrerPolicy="no-referrer"
-                        className="object-cover"
-                      />
+                      {VIDEO_TYPES.has(files[idx]?.type) ? (
+                        <video
+                          src={src}
+                          controls
+                          preload="metadata"
+                          playsInline
+                          aria-label={`Əlavə edilmiş video ${idx + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={src}
+                          alt={`Yüklənmiş şəkil ${idx + 1}`}
+                          fill
+                          referrerPolicy="no-referrer"
+                          className="object-cover"
+                        />
+                      )}
                       <button
                         type="button"
                         onClick={() => removeFile(idx)}
@@ -425,21 +491,22 @@ export default function MuracietPage() {
                       <span>Süni intellekt tərəfindən ilkin təhlil</span>
                     </div>
 
-                    {analysis && (
+                    {analysis && files.some((file) => IMAGE_TYPES.has(file.type)) && (
                       <div className="flex items-center gap-3">
                         <span className="font-mono-tabular text-xs font-semibold text-[#07564F]">
                           Etibarlılıq: {Math.round(analysis.confidence * 100)}%
                         </span>
-                        {files[0] && (
-                          <button
-                            type="button"
-                            onClick={() => void runAnalysis(files[0], category, description)}
-                            className="inline-flex items-center gap-1 text-xs font-medium text-[#087F70] hover:underline"
-                          >
-                            <RefreshCw className="h-3 w-3" aria-hidden="true" />
-                            <span>Yenilə</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const imageFile = files.find((file) => IMAGE_TYPES.has(file.type));
+                            if (imageFile) void runAnalysis(imageFile, category, description);
+                          }}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-[#087F70] hover:underline"
+                        >
+                          <RefreshCw className="h-3 w-3" aria-hidden="true" />
+                          <span>Yenilə</span>
+                        </button>
                       </div>
                     )}
                   </div>

@@ -80,16 +80,20 @@
   background-color: rgba(10, 15, 30, 0.78) !important;
 }
 
-.site-page main h1,
-.site-page main h2,
-.site-page main h3,
-.site-page main p,
-.site-page-dark h1,
-.site-page-dark h2,
-.site-page-dark h3,
-.site-page-dark p {
-  animation: civic-copy-enter 850ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+.scroll-reveal {
+  opacity: 0;
+  filter: blur(5px);
+  transform: perspective(900px) translate3d(0, 24px, 0) rotateX(-7deg);
   transform-origin: 50% 100%;
+  transition: opacity 680ms cubic-bezier(0.2, 0.75, 0.25, 1), filter 680ms cubic-bezier(0.2, 0.75, 0.25, 1), transform 680ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  will-change: opacity, transform, filter;
+}
+
+.scroll-reveal.is-revealed {
+  opacity: 1;
+  filter: blur(0);
+  transform: perspective(900px) translate3d(0, 0, 0) rotateX(0);
+  will-change: auto;
 }
 
 .site-page main h1,
@@ -101,11 +105,6 @@
 @keyframes civic-heading-enter {
   from { opacity: 0; filter: blur(7px); transform: perspective(900px) rotateX(-20deg) translateY(28px) scale(0.97); }
   to { opacity: 1; filter: blur(0); transform: perspective(900px) rotateX(0) translateY(0) scale(1); }
-}
-
-@keyframes civic-copy-enter {
-  from { opacity: 0; filter: blur(5px); transform: perspective(900px) rotateX(-8deg) translateY(18px); }
-  to { opacity: 1; filter: blur(0); transform: perspective(900px) rotateX(0) translateY(0); }
 }
 
 .civic-input {
@@ -130,9 +129,8 @@
   html {
     scroll-behavior: auto;
   }
-  .motion-heading,
-  .site-page main h1, .site-page main h2, .site-page main h3, .site-page main p,
-  .site-page-dark h1, .site-page-dark h2, .site-page-dark h3, .site-page-dark p { animation: none; }
+  .motion-heading { animation: none; }
+  .scroll-reveal, .scroll-reveal.is-revealed { opacity: 1; filter: none; transform: none; transition: none; }
   .civic-surface { transition: none; }
   .civic-surface:hover { transform: none; }
 }

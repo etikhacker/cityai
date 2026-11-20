@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ArrowRight, Menu, X } from 'lucide-react';
@@ -32,12 +33,7 @@ export function SiteHeader() {
           onClick={() => setMobileOpen(false)}
           className="font-display inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap text-lg font-bold tracking-[-0.02em] text-[#102A35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087F70]"
         >
-          <span
-            className="grid h-8 w-8 place-items-center rounded-lg bg-[#087F70] text-xs font-bold tracking-tight text-white"
-            aria-hidden="true"
-          >
-            CA
-          </span>
+          <Image src="/cityai-icon.png" alt="" width={40} height={44} priority className="h-10 w-10 rounded-lg object-cover" />
           <span>CityAI</span>
         </Link>
 
