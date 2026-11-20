@@ -343,7 +343,7 @@ function CompareContent() {
 
 export default function MuqayisePage() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F9FB] text-[#102A35]">
+    <div className="site-page flex min-h-screen flex-col text-[#102A35]">
       <SiteHeader />
       <Suspense
         fallback={

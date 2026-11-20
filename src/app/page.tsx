@@ -71,12 +71,12 @@ const PROCESS_STEPS = [
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F9FB] text-[#102A35]">
+    <div className="site-page flex min-h-screen flex-col text-[#102A35]">
       <SiteHeader />
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="border-b border-[#E2E8E8] bg-white">
+        <section className="border-b border-[#E2E8E8] bg-white/65 backdrop-blur-[2px]">
           <div className="mx-auto max-w-[1280px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
             <div className="grid items-stretch gap-10 lg:grid-cols-12 lg:gap-12">
               <div className="flex flex-col justify-between lg:col-span-7">

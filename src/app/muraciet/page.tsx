@@ -241,7 +241,7 @@ export default function MuracietPage() {
 
   if (trackingCode) {
     return (
-      <div className="complaint-page flex min-h-screen flex-col text-[#102A35]">
+      <div className="site-page flex min-h-screen flex-col text-[#102A35]">
         <SiteHeader />
         <main className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-14 sm:px-6">
           <div className="civic-surface w-full rounded-[16px] p-8 text-center sm:p-10">
@@ -312,7 +312,7 @@ export default function MuracietPage() {
   }
 
   return (
-    <div className="complaint-page flex min-h-screen flex-col text-[#102A35]">
+    <div className="site-page flex min-h-screen flex-col text-[#102A35]">
       <SiteHeader />
 
       <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-10 sm:px-6 lg:px-8">

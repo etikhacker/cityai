@@ -170,7 +170,7 @@ export default function AdminPage() {
 
   if (!authenticated) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#F7F9FB] text-[#102A35]">
+      <div className="site-page flex min-h-screen flex-col text-[#102A35]">
         <SiteHeader />
         <main className="mx-auto flex w-full max-w-md flex-1 items-center px-4 py-16">
           <div className="civic-surface w-full rounded-[16px] p-7 sm:p-8">
@@ -247,7 +247,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F7F9FB] text-[#102A35]">
+    <div className="site-page flex min-h-screen flex-col text-[#102A35]">
       <SiteHeader />
 
       <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-8 sm:px-6 lg:px-8">

@@ -15,7 +15,7 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center">
+    <div className="site-page-dark min-h-screen flex items-center justify-center">
       <div className="bg-[#111827] border border-white/07 rounded-2xl p-8 w-full max-w-sm">
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00d4aa] to-[#4f8cff] flex items-center justify-center font-bold text-[#0a0f1e] text-lg mx-auto mb-6">AI</div>
         <h1 className="text-white font-bold text-xl text-center mb-1">CityAI Admin</h1>
@@ -143,7 +143,7 @@ export default function AdminPage() {
   const filtered = filter === 'all' ? muracietler : muracietler.filter(m => m.status === filter)
 
   return (
-    <main className="min-h-screen bg-[#0a0f1e] text-white">
+    <main className="site-page-dark min-h-screen text-white">
       <div className="fixed inset-0 opacity-[0.03] pointer-events-none"
         style={{ backgroundImage: 'linear-gradient(#00d4aa 1px,transparent 1px),linear-gradient(90deg,#00d4aa 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
 
