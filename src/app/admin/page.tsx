@@ -1,333 +1,518 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useCallback, useMemo, useState } from 'react';
+import Image from 'next/image';
+import {
+  AlertCircle,
+  CheckCircle2,
+  GitCompareArrows,
+  ImagePlus,
+  Loader2,
+  Lock,
+  LogOut,
+  MapPin,
+  Search,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react';
+import { SiteHeader } from '@/components/SiteHeader';
+import { SiteFooter } from '@/components/SiteFooter';
+import { CategoryIcon, StatusBadge } from '@/components/StatusBadge';
+import {
+  CATEGORIES,
+  PRIORITY_CONFIG,
+  STATUS_CONFIG,
+  formatAzDate,
+  type CityComparison,
+  type ComplaintRecord,
+  type ComplaintStatus,
+} from '@/lib/types';
 
-const ADMIN_PASSWORD = 'cityai2026'
+const ADMIN_PASS = 'cityai2026';
 
-function LoginScreen({ onLogin }: { onLogin: () => void }) {
-  const [pass, setPass] = useState('')
-  const [error, setError] = useState(false)
-
-  const check = () => {
-    if (pass === ADMIN_PASSWORD) { onLogin() }
-    else { setError(true); setTimeout(() => setError(false), 2000) }
-  }
-
-  return (
-    <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center">
-      <div className="bg-[#111827] border border-white/07 rounded-2xl p-8 w-full max-w-sm">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00d4aa] to-[#4f8cff] flex items-center justify-center font-bold text-[#0a0f1e] text-lg mx-auto mb-6">AI</div>
-        <h1 className="text-white font-bold text-xl text-center mb-1">CityAI Admin</h1>
-        <p className="text-gray-500 text-sm text-center mb-6">Şifrəni daxil edin</p>
-        <input
-          type="password"
-          value={pass}
-          onChange={e => setPass(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && check()}
-          placeholder="Şifrə..."
-          className={`w-full bg-[#1a2235] border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none mb-3 transition-colors
-            ${error ? 'border-red-500' : 'border-white/07 focus:border-[#00d4aa]/40'}`}
-        />
-        {error && <p className="text-red-400 text-xs mb-3 text-center">Şifrə səhvdir</p>}
-        <button onClick={check}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00d4aa] to-[#00b894] text-[#0a0f1e] font-bold text-sm hover:-translate-y-0.5 transition-all">
-          Daxil ol
-        </button>
-      </div>
-    </div>
-  )
-}
-
-type Muraciet = {
-  id: string
-  tracking_code: string
-  category: string
-  description: string | null
-  priority: string
-  location: string | null
-  status: string
-  created_at: string
-}
-
-type CompareResult = {
-  is_resolved: boolean
-  is_same_location: boolean
-  confidence: number
-  resolution_score: number
-  summary: string
-  warning: string | null
-}
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending:     { label: 'Gözləyir',     color: 'text-gray-400 border-gray-600' },
-  analyzing:   { label: 'Analiz edilir', color: 'text-blue-400 border-blue-600' },
-  open:        { label: 'Açıq',         color: 'text-amber-400 border-amber-600' },
-  in_progress: { label: 'İcrada',       color: 'text-purple-400 border-purple-600' },
-  resolved:    { label: 'Həll edilib',  color: 'text-[#00d4aa] border-[#00d4aa]' },
-  rejected:    { label: 'Rədd edilib',  color: 'text-red-400 border-red-600' },
-}
-
-const PRIORITY_LABELS: Record<string, string> = {
-  low: '🟢 Aşağı', medium: '🟡 Orta', high: '🔴 Yüksək', critical: '🚨 Kritik'
-}
-
-const CAT_LABELS: Record<string, string> = {
-  yol: '🛣️ Yol', isiq: '💡 İşıq', zibil: '🗑️ Təmizlik',
-  su: '💧 Su', yasilliq: '🌳 Yaşıllıq', diger: '📋 Digər'
-}
+const FILTER_OPTIONS: Array<{ value: 'all' | ComplaintStatus; label: string }> = [
+  { value: 'all', label: 'Hamısı' },
+  { value: 'pending', label: 'Qəbul edildi' },
+  { value: 'open', label: 'Baxışdadır' },
+  { value: 'in_progress', label: 'İcrada' },
+  { value: 'resolved', label: 'Həll edildi' },
+  { value: 'rejected', label: 'İmtina' },
+];
 
 export default function AdminPage() {
-  const [loggedIn, setLoggedIn] = useState(false)
-  const [muracietler, setMuracietler] = useState<Muraciet[]>([])
-  const [loading, setLoading] = useState(true)
+  const [authenticated, setAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState(false);
 
-  if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />
-  const [selected, setSelected] = useState<Muraciet | null>(null)
-  const [beforeFile, setBeforeFile] = useState<File | null>(null)
-  const [afterFile, setAfterFile] = useState<File | null>(null)
-  const [beforePreview, setBeforePreview] = useState('')
-  const [afterPreview, setAfterPreview] = useState('')
-  const [comparing, setComparing] = useState(false)
-  const [result, setResult] = useState<CompareResult | null>(null)
-  const [filter, setFilter] = useState('all')
+  const [complaints, setComplaints] = useState<ComplaintRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | ComplaintStatus>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => { fetchMuracietler() }, [])
+  const [beforeFile, setBeforeFile] = useState<File | null>(null);
+  const [afterFile, setAfterFile] = useState<File | null>(null);
+  const [beforePreview, setBeforePreview] = useState('');
+  const [afterPreview, setAfterPreview] = useState('');
+  const [comparing, setComparing] = useState(false);
+  const [compareResult, setCompareResult] = useState<CityComparison | null>(null);
+  const [compareError, setCompareError] = useState('');
 
-  async function fetchMuracietler() {
-    setLoading(true)
-    const { data } = await supabase
-      .from('muracietler')
-      .select('*')
-      .order('created_at', { ascending: false })
-    setMuracietler(data || [])
-    setLoading(false)
-  }
+  const selectComplaint = useCallback((item: ComplaintRecord) => {
+    setSelectedId(item.id);
+    setBeforeFile(null);
+    setAfterFile(null);
+    setBeforePreview('');
+    setAfterPreview('');
+    setCompareResult(item.comparison);
+    setCompareError('');
+  }, []);
 
-  function handleFile(file: File, type: 'before' | 'after') {
-    const reader = new FileReader()
-    reader.onload = e => {
-      if (type === 'before') { setBeforeFile(file); setBeforePreview(e.target?.result as string) }
-      else { setAfterFile(file); setAfterPreview(e.target?.result as string) }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  function openDetail(m: Muraciet) {
-    setSelected(m)
-    setBeforeFile(null); setAfterFile(null)
-    setBeforePreview(''); setAfterPreview('')
-    setResult(null)
-  }
-
-  async function compare() {
-    if (!beforeFile || !afterFile || !selected) return
-    setComparing(true)
-    setResult(null)
+  const loadComplaints = useCallback(async () => {
+    setLoading(true);
     try {
-      const fd = new FormData()
-      fd.append('before', beforeFile)
-      fd.append('after', afterFile)
-      fd.append('muraciet_id', selected.id)
-      const res = await fetch('/api/compare', { method: 'POST', body: fd })
-      const data = await res.json()
-      if (data.success) {
-        setResult(data.result)
-        fetchMuracietler()
-        setSelected(prev => prev ? { ...prev, status: data.result.is_resolved ? 'resolved' : 'in_progress' } : prev)
+      const res = await fetch('/api/complaints');
+      const data = (await res.json()) as { complaints?: ComplaintRecord[] };
+      const items = data.complaints ?? [];
+      setComplaints(items);
+      if (items[0]) {
+        selectComplaint(items[0]);
+      } else {
+        setSelectedId(null);
       }
-    } catch { alert('Xəta baş verdi') }
-    finally { setComparing(false) }
+    } finally {
+      setLoading(false);
+    }
+  }, [selectComplaint]);
+
+  const selected = useMemo(
+    () => complaints.find((c) => c.id === selectedId) ?? null,
+    [complaints, selectedId]
+  );
+
+  const filteredComplaints = useMemo(() => {
+    return complaints.filter((item) => {
+      if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        return (
+          item.tracking_code.toLowerCase().includes(q) ||
+          item.district.toLowerCase().includes(q) ||
+          item.location.toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [complaints, searchQuery, statusFilter]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === ADMIN_PASS) {
+      setAuthenticated(true);
+      setAuthError(false);
+      void loadComplaints();
+    } else {
+      setAuthError(true);
+    }
+  };
+
+  const handleCompareFile = (file: File, side: 'before' | 'after') => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = (e.target?.result as string) || '';
+      if (side === 'before') {
+        setBeforeFile(file);
+        setBeforePreview(src);
+      } else {
+        setAfterFile(file);
+        setAfterPreview(src);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const runTicketVerification = async () => {
+    if (!selected || !beforeFile || !afterFile) return;
+    setComparing(true);
+    setCompareError('');
+    try {
+      const fd = new FormData();
+      fd.append('before', beforeFile);
+      fd.append('after', afterFile);
+      fd.append('muraciet_id', selected.id);
+
+      const res = await fetch('/api/compare', { method: 'POST', body: fd });
+      const data = (await res.json()) as {
+        success?: boolean;
+        result?: CityComparison;
+        updatedComplaint?: ComplaintRecord;
+        error?: string;
+      };
+
+      if (!res.ok || !data.success || !data.result) {
+        setCompareError(data.error || 'Müqayisə zamanı xəta baş verdi.');
+        return;
+      }
+
+      setCompareResult(data.result);
+      if (data.updatedComplaint) {
+        setComplaints((prev) =>
+          prev.map((c) => (c.id === data.updatedComplaint!.id ? data.updatedComplaint! : c))
+        );
+      }
+    } catch {
+      setCompareError('Müqayisə servisinə qoşulmaq alınmadı.');
+    } finally {
+      setComparing(false);
+    }
+  };
+
+  if (!authenticated) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#F7F9FB] text-[#102A35]">
+        <SiteHeader />
+        <main className="mx-auto flex w-full max-w-md flex-1 items-center px-4 py-16">
+          <div className="civic-surface w-full rounded-[16px] p-7 sm:p-8">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-[#E6F5F1] text-[#087F70]">
+              <Lock className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <h1 className="font-display mt-5 text-center text-2xl font-bold text-[#102A35]">
+              Operator girişi
+            </h1>
+            <p className="mt-1.5 text-center text-sm text-[#64748B]">
+              Müraciət növbəsini idarə etmək üçün operator şifrəsini daxil edin.
+            </p>
+
+            <form onSubmit={handleLogin} className="mt-6 space-y-4">
+              <div>
+                <label
+                  htmlFor="admin-password"
+                  className="block text-[13px] font-semibold text-[#102A35]"
+                >
+                  Şifrə
+                </label>
+                <input
+                  id="admin-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setAuthError(false);
+                  }}
+                  placeholder="••••••••"
+                  className="civic-input mt-1.5 h-12 w-full px-3.5 text-sm"
+                />
+              </div>
+
+              {authError && (
+                <p className="text-xs font-medium text-[#DC2626]">
+                  Daxil edilən şifrə yanlışdır.
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className="h-12 w-full rounded-lg bg-[#087F70] text-sm font-semibold text-white transition-colors hover:bg-[#06695E]"
+              >
+                Daxil ol
+              </button>
+            </form>
+
+            <div className="mt-5 border-t border-[#E2E8E8] pt-4 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setPassword(ADMIN_PASS);
+                  setAuthenticated(true);
+                  void loadComplaints();
+                }}
+                className="text-xs font-semibold text-[#087F70] hover:underline"
+              >
+                Demo operator hesabı ilə daxil ol (cityai2026)
+              </button>
+            </div>
+          </div>
+        </main>
+        <SiteFooter />
+      </div>
+    );
   }
 
-  const filtered = filter === 'all' ? muracietler : muracietler.filter(m => m.status === filter)
+  const counts = {
+    total: complaints.length,
+    open: complaints.filter((c) => c.status === 'pending' || c.status === 'open').length,
+    inProgress: complaints.filter((c) => c.status === 'in_progress').length,
+    resolved: complaints.filter((c) => c.status === 'resolved').length,
+  };
 
   return (
-    <main className="min-h-screen bg-[#0a0f1e] text-white">
-      <div className="fixed inset-0 opacity-[0.03] pointer-events-none"
-        style={{ backgroundImage: 'linear-gradient(#00d4aa 1px,transparent 1px),linear-gradient(90deg,#00d4aa 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
+    <div className="flex min-h-screen flex-col bg-[#F7F9FB] text-[#102A35]">
+      <SiteHeader />
 
-      <div className="relative z-10 flex h-screen">
-
-        {/* Sidebar */}
-        <div className="w-80 border-r border-white/07 flex flex-col">
-          {/* Header */}
-          <div className="p-5 border-b border-white/07">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#00d4aa] to-[#4f8cff] flex items-center justify-center font-bold text-[#0a0f1e] text-sm">AI</div>
-              <div>
-                <p className="font-bold text-sm">CityAI</p>
-                <p className="text-xs text-gray-500">Admin Panel</p>
-              </div>
-            </div>
-            {/* Filter */}
-            <select
-              value={filter}
-              onChange={e => setFilter(e.target.value)}
-              className="w-full bg-[#1a2235] border border-white/07 rounded-lg px-3 py-2 text-sm text-white outline-none"
-            >
-              <option value="all">Bütün müraciətlər</option>
-              <option value="open">Açıq</option>
-              <option value="in_progress">İcrada</option>
-              <option value="resolved">Həll edilib</option>
-            </select>
+      <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-8 sm:px-6 lg:px-8">
+        {/* Top Bar & KPI Strip */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E2E8E8] pb-5">
+          <div>
+            <p className="text-sm font-semibold text-[#087F70]">Operator idarəetmə paneli</p>
+            <h1 className="font-display mt-1 text-2xl font-bold tracking-[-0.02em] text-[#102A35] sm:text-3xl">
+              Şəhər müraciətləri reyestri
+            </h1>
           </div>
 
-          {/* List */}
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="p-5 text-gray-500 text-sm">Yüklənir...</div>
-            ) : filtered.length === 0 ? (
-              <div className="p-5 text-gray-500 text-sm">Müraciət yoxdur</div>
-            ) : filtered.map(m => (
-              <div
-                key={m.id}
-                onClick={() => openDetail(m)}
-                className={`p-4 border-b border-white/05 cursor-pointer hover:bg-white/03 transition-colors
-                  ${selected?.id === m.id ? 'bg-white/05 border-l-2 border-l-[#00d4aa]' : ''}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-mono text-[#00d4aa]">{m.tracking_code}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_LABELS[m.status]?.color || ''}`}>
-                    {STATUS_LABELS[m.status]?.label}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-300 truncate">{m.description || '—'}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-gray-500">{CAT_LABELS[m.category] || m.category}</span>
-                  <span className="text-xs text-gray-600">•</span>
-                  <span className="text-xs text-gray-500">{PRIORITY_LABELS[m.priority]}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Stats */}
-          <div className="p-4 border-t border-white/07 grid grid-cols-3 gap-2">
-            {[
-              { label: 'Açıq', count: muracietler.filter(m => m.status === 'open').length, color: 'text-amber-400' },
-              { label: 'İcrada', count: muracietler.filter(m => m.status === 'in_progress').length, color: 'text-purple-400' },
-              { label: 'Həll', count: muracietler.filter(m => m.status === 'resolved').length, color: 'text-[#00d4aa]' },
-            ].map((s, i) => (
-              <div key={i} className="bg-[#111827] rounded-lg p-2 text-center">
-                <p className={`text-lg font-bold ${s.color}`}>{s.count}</p>
-                <p className="text-xs text-gray-500">{s.label}</p>
-              </div>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => setAuthenticated(false)}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#E2E8E8] bg-white px-3.5 text-xs font-semibold text-[#475569] hover:bg-[#F1F5F5]"
+          >
+            <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Çıxış</span>
+          </button>
         </div>
 
-        {/* Main content */}
-        <div className="flex-1 overflow-y-auto">
-          {!selected ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <p className="text-4xl mb-3">📋</p>
-                <p className="text-gray-500">Müraciət seçin</p>
-              </div>
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: 'Cəmi müraciət', value: counts.total },
+            { label: 'Yeni / Baxışda', value: counts.open },
+            { label: 'İcrada', value: counts.inProgress },
+            { label: 'Həll edildi', value: counts.resolved },
+          ].map((kpi) => (
+            <div key={kpi.label} className="civic-surface rounded-[12px] p-4">
+              <p className="text-xs font-medium text-[#64748B]">{kpi.label}</p>
+              <p className="font-display font-mono-tabular mt-1 text-2xl font-bold text-[#102A35]">
+                {kpi.value}
+              </p>
             </div>
-          ) : (
-            <div className="p-8 max-w-2xl">
-              {/* Müraciət info */}
-              <div className="mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="font-mono text-[#00d4aa] font-bold text-lg">{selected.tracking_code}</span>
-                  <span className={`text-sm px-3 py-1 rounded-full border ${STATUS_LABELS[selected.status]?.color}`}>
-                    {STATUS_LABELS[selected.status]?.label}
-                  </span>
-                </div>
-                <div className="bg-[#111827] border border-white/07 rounded-xl p-5 grid grid-cols-2 gap-4">
-                  {[
-                    { label: 'Kateqoriya', value: CAT_LABELS[selected.category] || selected.category },
-                    { label: 'Prioritet', value: PRIORITY_LABELS[selected.priority] },
-                    { label: 'Yer', value: selected.location || '—' },
-                    { label: 'Tarix', value: new Date(selected.created_at).toLocaleDateString('az-AZ') },
-                  ].map((r, i) => (
-                    <div key={i}>
-                      <p className="text-xs text-gray-500 mb-1">{r.label}</p>
-                      <p className="text-sm text-white">{r.value}</p>
-                    </div>
-                  ))}
-                  {selected.description && (
-                    <div className="col-span-2">
-                      <p className="text-xs text-gray-500 mb-1">Təsvir</p>
-                      <p className="text-sm text-white">{selected.description}</p>
-                    </div>
-                  )}
-                </div>
+          ))}
+        </div>
+
+        {/* Split Workspace */}
+        <div className="mt-6 grid items-start gap-6 lg:grid-cols-12">
+          {/* Queue Sidebar */}
+          <section className="civic-surface overflow-hidden rounded-[14px] lg:col-span-5">
+            <div className="border-b border-[#E2E8E8] p-4">
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#94A3B8]"
+                  aria-hidden="true"
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Kod, rayon və ya ünvan axtar..."
+                  className="civic-input h-10 w-full pr-3 pl-9 text-sm"
+                />
               </div>
 
-              {/* Before/After */}
-              <div className="mb-5">
-                <p className="text-xs font-semibold tracking-widest text-gray-500 uppercase mb-3">Vizual Yoxlama</p>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  {[
-                    { type: 'before' as const, label: 'Əvvəl (before)', preview: beforePreview, border: 'border-red-500/30' },
-                    { type: 'after' as const, label: 'Sonra (after)', preview: afterPreview, border: 'border-[#00d4aa]/30' },
-                  ].map(({ type, label, preview, border }) => (
-                    <div key={type} className="bg-[#111827] border border-white/07 rounded-xl p-4">
-                      <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">{label}</p>
-                      <label className="block cursor-pointer">
-                        <input type="file" accept="image/*" className="hidden"
-                          onChange={e => e.target.files?.[0] && handleFile(e.target.files[0], type)} />
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setStatusFilter(opt.value)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      statusFilter === opt.value
+                        ? 'bg-[#087F70] text-white'
+                        : 'bg-[#F2F4F6] text-[#475569] hover:text-[#102A35]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="max-h-[600px] divide-y divide-[#E2E8E8] overflow-y-auto">
+              {loading ? (
+                <div className="p-6 text-center text-sm text-[#64748B]">Yüklənir...</div>
+              ) : filteredComplaints.length === 0 ? (
+                <div className="p-8 text-center text-sm text-[#64748B]">
+                  Filtrə uyğun müraciət tapılmadı.
+                </div>
+              ) : (
+                filteredComplaints.map((item) => {
+                  const active = item.id === selected?.id;
+                  const cat = CATEGORIES.find((c) => c.id === item.category);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectComplaint(item)}
+                      className={`block w-full px-4 py-3.5 text-left transition-colors ${
+                        active ? 'bg-[#E6F5F1]/70' : 'bg-white hover:bg-[#F7F9FB]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono-tabular text-xs font-bold text-[#087F70]">
+                          #{item.tracking_code}
+                        </span>
+                        <StatusBadge status={item.status} />
+                      </div>
+                      <p className="mt-1.5 line-clamp-1 text-sm font-medium text-[#102A35]">
+                        {item.description}
+                      </p>
+                      <p className="mt-1 text-xs text-[#64748B]">
+                        {cat?.shortLabel ?? item.category} · {item.district} ·{' '}
+                        {PRIORITY_CONFIG[item.priority].label}
+                      </p>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          {/* Detail Workspace */}
+          <section className="civic-surface rounded-[14px] p-5 sm:p-6 lg:col-span-7">
+            {!selected ? (
+              <div className="py-16 text-center text-sm text-[#64748B]">
+                Baxış üçün sol siyahıdan müraciət seçin.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E2E8E8] pb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#F2F4F6] text-[#087F70]">
+                      <CategoryIcon category={selected.category} className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono-tabular text-sm font-bold text-[#087F70]">
+                          #{selected.tracking_code}
+                        </span>
+                        <span className="text-xs text-[#64748B]">
+                          · {formatAzDate(selected.created_at)}
+                        </span>
+                      </div>
+                      <h2 className="font-display mt-0.5 text-lg font-semibold text-[#102A35]">
+                        {CATEGORIES.find((c) => c.id === selected.category)?.label ??
+                          selected.category}
+                      </h2>
+                    </div>
+                  </div>
+                  <StatusBadge status={selected.status} />
+                </div>
+
+                {/* Details */}
+                <div className="space-y-3">
+                  <p className="text-sm leading-relaxed text-[#102A35]">{selected.description}</p>
+                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-[#475569]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-[#087F70]" aria-hidden="true" />
+                      {selected.district} · {selected.location}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5 text-[#087F70]" aria-hidden="true" />
+                      {selected.department}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Before / After AI Verification inside Operator Panel */}
+                <div className="border-t border-[#E2E8E8] pt-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-display text-sm font-semibold text-[#102A35]">
+                      Əvvəl / Sonra AI vizual yoxlama
+                    </h3>
+                    <span className="text-xs text-[#64748B]">Avtomatik status təsdiqi</span>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    {(
+                      [
+                        { side: 'before' as const, label: 'Əvvəl', preview: beforePreview },
+                        { side: 'after' as const, label: 'Sonra', preview: afterPreview },
+                      ] as const
+                    ).map(({ side, label, preview }) => (
+                      <label
+                        key={side}
+                        className="relative flex aspect-[4/3] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[10px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC] text-center hover:border-[#087F70]"
+                      >
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(e) =>
+                            e.target.files?.[0] && handleCompareFile(e.target.files[0], side)
+                          }
+                        />
                         {preview ? (
-                          <img src={preview} alt={type} className="w-full aspect-square object-cover rounded-lg" />
+                          <Image
+                            src={preview}
+                            alt={label}
+                            fill
+                            referrerPolicy="no-referrer"
+                            className="object-cover"
+                          />
                         ) : (
-                          <div className={`w-full aspect-square rounded-lg border-2 border-dashed ${border} flex flex-col items-center justify-center gap-2 hover:opacity-80 transition-opacity`}>
-                            <span className="text-2xl">{type === 'before' ? '📸' : '✅'}</span>
-                            <span className="text-xs text-gray-500">Şəkil seçin</span>
+                          <div className="p-3">
+                            <ImagePlus
+                              className="mx-auto h-5 w-5 text-[#087F70]"
+                              aria-hidden="true"
+                            />
+                            <span className="mt-1.5 block text-xs font-semibold text-[#102A35]">
+                              {label} şəkli
+                            </span>
                           </div>
                         )}
                       </label>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={compare}
-                  disabled={comparing || !beforeFile || !afterFile}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00d4aa] to-[#00b894] text-[#0a0f1e] font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 transition-all"
-                >
-                  {comparing ? '⏳ AI analiz edir...' : '🔍 Vizual uyğunluğu yoxla'}
-                </button>
-              </div>
-
-              {/* Result */}
-              {result && (
-                <div className={`bg-[#111827] border rounded-xl p-5 ${result.is_resolved ? 'border-[#00d4aa]/30' : 'border-red-500/30'}`}>
-                  <div className={`rounded-lg p-4 mb-4 flex items-center gap-3 ${result.is_resolved ? 'bg-[#00d4aa]/10' : 'bg-red-500/10'}`}>
-                    <span className="text-2xl">{result.is_resolved ? '✅' : '⚠️'}</span>
-                    <div>
-                      <p className={`font-bold text-sm ${result.is_resolved ? 'text-[#00d4aa]' : 'text-red-400'}`}>
-                        {result.is_resolved ? 'Problem həll edilib' : 'Problem həll edilməyib'}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">{result.summary}</p>
-                    </div>
-                  </div>
-                  {result.warning && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4 flex gap-2">
-                      <span>🚨</span>
-                      <p className="text-amber-400 text-xs">{result.warning}</p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { label: 'Həll skoru', value: `${result.resolution_score}/100`, color: result.resolution_score > 60 ? '#00d4aa' : '#f87171' },
-                      { label: 'Etibarlılıq', value: `${Math.round(result.confidence * 100)}%`, color: '#4f8cff' },
-                      { label: 'Eyni məkan', value: result.is_same_location ? 'Bəli' : 'Xeyr', color: result.is_same_location ? '#00d4aa' : '#f87171' },
-                    ].map((m, i) => (
-                      <div key={i} className="bg-[#1a2235] rounded-lg p-3 text-center">
-                        <p className="text-xs text-gray-500 mb-1">{m.label}</p>
-                        <p className="text-base font-bold" style={{ color: m.color }}>{m.value}</p>
-                      </div>
                     ))}
                   </div>
+
+                  {compareError && (
+                    <p className="mt-2.5 flex items-center gap-1.5 text-xs text-[#DC2626]">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      {compareError}
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => void runTicketVerification()}
+                    disabled={comparing || !beforeFile || !afterFile}
+                    className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#E2E8E8] bg-white text-xs font-semibold text-[#102A35] transition-colors hover:bg-[#F1F5F5] disabled:opacity-50"
+                  >
+                    {comparing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        <span>AI müqayisə aparır...</span>
+                      </>
+                    ) : (
+                      <>
+                        <GitCompareArrows className="h-4 w-4 text-[#087F70]" aria-hidden="true" />
+                        <span>Həll uyğunluğunu yoxla</span>
+                      </>
+                    )}
+                  </button>
+
+                  {compareResult && (
+                    <div className="mt-3 rounded-[10px] border border-[#087F70]/25 bg-[#E6F5F1] p-3.5 text-xs">
+                      <div className="flex items-center justify-between font-semibold text-[#087F70]">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                          {compareResult.is_resolved
+                            ? 'Həll təsdiqləndi'
+                            : 'Əlavə yoxlama tələb olunur'}
+                        </span>
+                        <span className="font-mono-tabular">
+                          {compareResult.resolution_score}/100 bal
+                        </span>
+                      </div>
+                      <p className="mt-1.5 leading-relaxed text-[#3E4946]">
+                        {compareResult.summary}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </section>
         </div>
-      </div>
-    </main>
-  )
+      </main>
+
+      <SiteFooter />
+    </div>
+  );
 }
