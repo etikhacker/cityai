@@ -4,6 +4,9 @@
 
 @layer base {
   :root {
+    --font-display: 'Segoe UI';
+    --font-sans: 'Segoe UI';
+    --font-mono: ui-monospace;
     --cp-canvas: #F7F9FB;
     --cp-surface: #FFFFFF;
     --cp-surface-low: #F2F4F6;
