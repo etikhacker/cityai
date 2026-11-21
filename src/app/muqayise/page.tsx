@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -16,14 +16,15 @@ import {
 } from 'lucide-react';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
-import type { CityComparison, ComplaintRecord } from '@/lib/types';
+import type { CityComparison } from '@/lib/types';
+
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
 function CompareContent() {
   const searchParams = useSearchParams();
   const initialCode = searchParams.get('kod') ?? '';
 
-  const [complaints, setComplaints] = useState<ComplaintRecord[]>([]);
-  const [selectedComplaintId, setSelectedComplaintId] = useState('');
 
   const [beforeFile, setBeforeFile] = useState<File | null>(null);
   const [afterFile, setAfterFile] = useState<File | null>(null);
@@ -34,31 +35,13 @@ function CompareContent() {
   const [errorMsg, setErrorMsg] = useState('');
   const [result, setResult] = useState<CityComparison | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    fetch('/api/complaints')
-      .then((res) => res.json())
-      .then((data: { complaints?: ComplaintRecord[] }) => {
-        if (!active || !data.complaints) return;
-        setComplaints(data.complaints);
-        if (initialCode) {
-          const match = data.complaints.find(
-            (c) => c.tracking_code.toUpperCase() === initialCode.toUpperCase()
-          );
-          if (match) setSelectedComplaintId(match.id);
-        }
-      })
-      .catch(() => {
-        // Ignore non-critical list fetch failure
-      });
-    return () => {
-      active = false;
-    };
-  }, [initialCode]);
-
   const handleFile = (file: File, side: 'before' | 'after') => {
-    if (!file.type.startsWith('image/')) {
-      setErrorMsg('Zəhmət olmasa yalnız şəkil faylı seçin.');
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      setErrorMsg('JPEG, PNG, WEBP, HEIC və ya HEIF şəkli seçin.');
+      return;
+    }
+    if (file.size <= 0 || file.size > MAX_IMAGE_SIZE) {
+      setErrorMsg('Şəklin ölçüsü 10 MB-dan çox olmamalıdır.');
       return;
     }
     setErrorMsg('');
@@ -96,10 +79,6 @@ function CompareContent() {
       const fd = new FormData();
       fd.append('before', beforeFile);
       fd.append('after', afterFile);
-      if (selectedComplaintId) {
-        fd.append('muraciet_id', selectedComplaintId);
-      }
-
       const res = await fetch('/api/compare', { method: 'POST', body: fd });
       const data = (await res.json()) as {
         success?: boolean;
@@ -120,8 +99,6 @@ function CompareContent() {
     }
   };
 
-  const selectedComplaint = complaints.find((c) => c.id === selectedComplaintId);
-
   return (
     <main className="mx-auto w-full max-w-[1040px] flex-1 px-4 py-10 sm:px-6 lg:px-8">
       <div className="border-b border-[#E2E8E8] pb-6">
@@ -130,40 +107,14 @@ function CompareContent() {
           Əvvəl və Sonra müqayisəsi
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#475569] sm:text-base">
-          İlkin problem fotosunu icra sonrası foto ilə müqayisə edin. Süni intellekt eyni
-          məkanı və problemin həll səviyyəsini yoxlayır.
+          İlkin problem fotosunu icradan sonrakı foto ilə müqayisə edin. Süni intellekt
+          şəkillərin eyni məkan olub-olmadığını və görünən dəyişiklikləri ilkin qiymətləndirir.
         </p>
       </div>
 
-      {/* Optional Complaint Link */}
-      <section className="civic-surface mt-6 rounded-[14px] p-5 sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <label
-              htmlFor="link-complaint"
-              className="block text-[13px] font-semibold text-[#102A35]"
-            >
-              Müraciətə bağla (istəyə bağlı)
-            </label>
-            <p className="mt-0.5 text-xs text-[#64748B]">
-              Seçildikdə təsdiq nəticəsi birbaşa həmin müraciətin tarixçəsinə yazılır.
-            </p>
-          </div>
-          <select
-            id="link-complaint"
-            value={selectedComplaintId}
-            onChange={(e) => setSelectedComplaintId(e.target.value)}
-            className="civic-input h-11 w-full px-3 text-sm sm:w-80"
-          >
-            <option value="">Yalnız sərbəst müqayisə et</option>
-            {complaints.map((c) => (
-              <option key={c.id} value={c.id}>
-                #{c.tracking_code} — {c.district}
-              </option>
-            ))}
-          </select>
-        </div>
-      </section>
+      <p className="mt-6 rounded-xl border border-[#E2E8E8] bg-white/80 p-4 text-sm text-[#475569]">
+        Müraciət statusunu yalnız təsdiqlənmiş operator dəyişə bilər. {initialCode ? <>Bu səhifəni <Link href={`/izle?kod=${encodeURIComponent(initialCode)}`} className="font-semibold text-[#087F70] hover:underline">#{initialCode} izləmə səhifəsindən</Link> açdınız.</> : null}
+      </p>
 
       {/* Two-Column Dropzones */}
       <section className="mt-6 grid gap-5 md:grid-cols-2">
@@ -178,7 +129,7 @@ function CompareContent() {
             {
               side: 'after' as const,
               title: 'Sonrakı vəziyyət',
-              subtitle: 'Təmir və ya bərpa sonrası fotoşəkil',
+              subtitle: 'Təmirdən və ya bərpadan sonrakı fotoşəkil',
               preview: afterPreview,
             },
           ] as const
@@ -223,7 +174,7 @@ function CompareContent() {
                   <ImagePlus className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <span className="mt-3 text-sm font-semibold text-[#102A35]">Şəkil seçin</span>
-                <span className="mt-1 text-xs text-[#64748B]">JPEG, PNG, WEBP · maks. 10 MB</span>
+                <span className="mt-1 text-xs text-[#64748B]">JPEG, PNG, WEBP, HEIC, HEIF · maks. 10 MB</span>
               </label>
             )}
           </div>
@@ -320,21 +271,6 @@ function CompareContent() {
             </div>
           </div>
 
-          {selectedComplaint && (
-            <div className="mt-5 flex items-center justify-between gap-4 border-t border-[#E2E8E8] pt-4">
-              <span className="text-xs text-[#475569]">
-                Nəticə <strong className="text-[#102A35]">#{selectedComplaint.tracking_code}</strong>{' '}
-                müraciətinə əlavə edildi.
-              </span>
-              <Link
-                href={`/izle?kod=${selectedComplaint.tracking_code}`}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#087F70] hover:underline"
-              >
-                <span>Tarixçəyə bax</span>
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </Link>
-            </div>
-          )}
         </section>
       )}
     </main>

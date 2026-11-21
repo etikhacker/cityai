@@ -24,8 +24,6 @@ import {
   type ComplaintRecord,
 } from '@/lib/types';
 
-const SAMPLE_CODES = ['AZ-8942-B', 'AZ-7314-K', 'AZ-6105-M', 'AZ-5490-R'];
-
 function TrackingContent() {
   const searchParams = useSearchParams();
   const initialCode = searchParams.get('kod') ?? '';
@@ -133,7 +131,8 @@ function TrackingContent() {
               type="text"
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-              placeholder="İzləmə kodu (məs. AZ-8942-B)"
+              placeholder="İzləmə kodu (MZB- ilə başlayır)"
+              aria-label="İzləmə kodu"
               className="civic-input font-mono-tabular h-12 w-full pr-4 pl-10 text-sm tracking-wide uppercase"
             />
           </div>
@@ -146,22 +145,8 @@ function TrackingContent() {
           </button>
         </form>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#E2E8E8] pt-3.5 text-xs text-[#64748B]">
-          <span>Nümunə kodlar:</span>
-          {SAMPLE_CODES.map((code) => (
-            <button
-              key={code}
-              type="button"
-              onClick={() => void lookupCode(code)}
-              className={`font-mono-tabular rounded-md border px-2.5 py-1 font-medium transition-colors ${
-                searchedCode === code
-                  ? 'border-[#087F70] bg-[#E6F5F1] text-[#087F70]'
-                  : 'border-[#E2E8E8] bg-[#F7F9FB] text-[#102A35] hover:border-[#087F70]/50'
-              }`}
-            >
-              {code}
-            </button>
-          ))}
+        <div className="mt-4 border-t border-[#E2E8E8] pt-3.5 text-xs leading-relaxed text-[#64748B]">
+          Yeni izləmə kodu MZB- prefiksindən sonra 32 simvoldan ibarətdir. Köhnə MZB-XXXXXX kodları da qəbul olunur.
         </div>
       </section>
 
@@ -187,8 +172,8 @@ function TrackingContent() {
             <span className="font-mono-tabular font-semibold text-[#102A35]">
               {searchedCode}
             </span>{' '}
-            koduna uyğun qeyd tapılmadı. Kodu düzgün yazdığınızdan əmin olun və ya yuxarıdakı
-            nümunə kodlardan birini yoxlayın.
+            koduna uyğun müraciət tapılmadı. Kodu müraciət göndərildikdən sonra verilən kodla
+            tutuşdurub yenidən yoxlayın.
           </p>
           <Link
             href="/muraciet"
@@ -224,17 +209,17 @@ function TrackingContent() {
 
               <dl className="mt-5 grid grid-cols-1 gap-3 border-t border-[#E2E8E8] pt-4 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="text-xs font-medium text-[#64748B]">Rayon və ünvan</dt>
+                  <dt className="text-xs font-medium text-[#64748B]">Məkan</dt>
                   <dd className="mt-1 flex items-start gap-1.5 font-medium text-[#102A35]">
                     <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#087F70]" aria-hidden="true" />
                     <span>
-                      {complaint.district} · {complaint.location}
+                      {complaint.location}
                     </span>
                   </dd>
                 </div>
 
                 <div>
-                  <dt className="text-xs font-medium text-[#64748B]">Məsul qurum</dt>
+                  <dt className="text-xs font-medium text-[#64748B]">Təklif olunan qurum</dt>
                   <dd className="mt-1 flex items-start gap-1.5 font-medium text-[#102A35]">
                     <ShieldCheck
                       className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#087F70]"

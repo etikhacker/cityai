@@ -45,7 +45,6 @@ export type ComplaintRecord = {
   category: CategoryId;
   description: string;
   priority: PriorityLevel;
-  district: string;
   location: string;
   status: ComplaintStatus;
   department: string;
@@ -164,21 +163,21 @@ export const STATUS_CONFIG: Record<
   },
   open: {
     label: 'Baxışdadır',
-    description: 'Müraciət aidiyyəti icra qurumuna yönləndirilib.',
+    description: 'Müraciət uyğun qurum üzrə operator baxış növbəsindədir.',
     bg: '#FEF3C7',
     text: '#B45309',
     stepOrder: 3,
   },
   in_progress: {
     label: 'İcradadır',
-    description: 'Sahə briqadası tərəfindən bərpa işləri aparılır.',
+    description: 'Müraciət üzrə icra prosesi davam edir.',
     bg: '#FEF3C7',
     text: '#B45309',
     stepOrder: 4,
   },
   resolved: {
     label: 'Həll edildi',
-    description: 'Problem aradan qaldırılıb və nəticə təsdiqlənib.',
+    description: 'Operator problemin həll edildiyini təsdiqləyib.',
     bg: '#D8F3E8',
     text: '#087F70',
     stepOrder: 5,
@@ -191,19 +190,6 @@ export const STATUS_CONFIG: Record<
     stepOrder: 5,
   },
 };
-
-export const BAKU_DISTRICTS = [
-  'Nəsimi rayonu',
-  'Yasamal rayonu',
-  'Səbail rayonu',
-  'Nərimanov rayonu',
-  'Xətai rayonu',
-  'Binəqədi rayonu',
-  'Nizami rayonu',
-  'Sabunçu rayonu',
-  'Suraxanı rayonu',
-  'Qaradağ rayonu',
-];
 
 export function formatAzDate(isoString: string): string {
   const date = new Date(isoString);

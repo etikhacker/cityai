@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import {
   AlertCircle,
@@ -28,8 +28,6 @@ import {
   type ComplaintStatus,
 } from '@/lib/types';
 
-const ADMIN_PASS = 'cityai2026';
-
 const FILTER_OPTIONS: Array<{ value: 'all' | ComplaintStatus; label: string }> = [
   { value: 'all', label: 'Hamısı' },
   { value: 'pending', label: 'Qəbul edildi' },
@@ -39,10 +37,13 @@ const FILTER_OPTIONS: Array<{ value: 'all' | ComplaintStatus; label: string }> =
   { value: 'rejected', label: 'İmtina' },
 ];
 
+const COMPARISON_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState(false);
+  const [authMessage, setAuthMessage] = useState('Daxil edilən şifrə yanlışdır.');
 
   const [complaints, setComplaints] = useState<ComplaintRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,8 +72,13 @@ export default function AdminPage() {
   const loadComplaints = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/complaints');
+      const res = await fetch('/api/admin/complaints', { cache: 'no-store' });
       const data = (await res.json()) as { complaints?: ComplaintRecord[] };
+      if (res.status === 401) {
+        setAuthenticated(false);
+        return;
+      }
+      if (!res.ok) throw new Error('Admin müraciətləri yüklənmədi.');
       const items = data.complaints ?? [];
       setComplaints(items);
       if (items[0]) {
@@ -80,6 +86,9 @@ export default function AdminPage() {
       } else {
         setSelectedId(null);
       }
+    } catch {
+      setComplaints([]);
+      setSelectedId(null);
     } finally {
       setLoading(false);
     }
@@ -97,7 +106,6 @@ export default function AdminPage() {
         const q = searchQuery.trim().toLowerCase();
         return (
           item.tracking_code.toLowerCase().includes(q) ||
-          item.district.toLowerCase().includes(q) ||
           item.location.toLowerCase().includes(q) ||
           item.description.toLowerCase().includes(q)
         );
@@ -106,18 +114,51 @@ export default function AdminPage() {
     });
   }, [complaints, searchQuery, statusFilter]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === ADMIN_PASS) {
+    try {
+      const response = await fetch('/api/admin/session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }),
+      });
+      const data = await response.json() as { error?: string };
+      if (!response.ok) {
+        setAuthMessage(data.error || 'Operator girişi alınmadı.');
+        setAuthError(true);
+        return;
+      }
       setAuthenticated(true);
       setAuthError(false);
-      void loadComplaints();
-    } else {
+      await loadComplaints();
+    } catch {
       setAuthError(true);
+      setAuthMessage('Server ilə əlaqə yaratmaq alınmadı.');
     }
   };
 
+  useEffect(() => {
+    let active = true;
+    fetch('/api/admin/session', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data: { authenticated?: boolean }) => {
+        if (active && data.authenticated) {
+          setAuthenticated(true);
+          void loadComplaints();
+        }
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [loadComplaints]);
+
   const handleCompareFile = (file: File, side: 'before' | 'after') => {
+    if (!COMPARISON_IMAGE_TYPES.has(file.type)) {
+      setCompareError('JPEG, PNG, WEBP, HEIC və ya HEIF şəkli seçin.');
+      return;
+    }
+    if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
+      setCompareError('Şəklin ölçüsü 10 MB-dan çox olmamalıdır.');
+      return;
+    }
+    setCompareError('');
     const reader = new FileReader();
     reader.onload = (e) => {
       const src = (e.target?.result as string) || '';
@@ -205,11 +246,7 @@ export default function AdminPage() {
                 />
               </div>
 
-              {authError && (
-                <p className="text-xs font-medium text-[#DC2626]">
-                  Daxil edilən şifrə yanlışdır.
-                </p>
-              )}
+              {authError && <p role="alert" className="text-xs font-medium text-[#DC2626]">{authMessage}</p>}
 
               <button
                 type="submit"
@@ -219,19 +256,6 @@ export default function AdminPage() {
               </button>
             </form>
 
-            <div className="mt-5 border-t border-[#E2E8E8] pt-4 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setPassword(ADMIN_PASS);
-                  setAuthenticated(true);
-                  void loadComplaints();
-                }}
-                className="text-xs font-semibold text-[#087F70] hover:underline"
-              >
-                Demo operator hesabı ilə daxil ol (cityai2026)
-              </button>
-            </div>
           </div>
         </main>
         <SiteFooter />
@@ -262,7 +286,12 @@ export default function AdminPage() {
 
           <button
             type="button"
-            onClick={() => setAuthenticated(false)}
+                  onClick={() => {
+              void fetch('/api/admin/session', { method: 'DELETE' });
+              setAuthenticated(false);
+              setComplaints([]);
+              setSelectedId(null);
+            }}
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#E2E8E8] bg-white px-3.5 text-xs font-semibold text-[#475569] hover:bg-[#F1F5F5]"
           >
             <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
@@ -300,7 +329,7 @@ export default function AdminPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Kod, rayon və ya ünvan axtar..."
+                  placeholder="Kod və ya ünvan axtar..."
                   className="civic-input h-10 w-full pr-3 pl-9 text-sm"
                 />
               </div>
@@ -353,7 +382,7 @@ export default function AdminPage() {
                         {item.description}
                       </p>
                       <p className="mt-1 text-xs text-[#64748B]">
-                        {cat?.shortLabel ?? item.category} · {item.district} ·{' '}
+                        {cat?.shortLabel ?? item.category} · {item.location} ·{' '}
                         {PRIORITY_CONFIG[item.priority].label}
                       </p>
                     </button>
@@ -401,10 +430,11 @@ export default function AdminPage() {
                   <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-[#475569]">
                     <span className="inline-flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5 text-[#087F70]" aria-hidden="true" />
-                      {selected.district} · {selected.location}
+                      {selected.location}
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <ShieldCheck className="h-3.5 w-3.5 text-[#087F70]" aria-hidden="true" />
+                      <span>Təklif olunan qurum:</span>
                       {selected.department}
                     </span>
                   </div>
@@ -432,7 +462,7 @@ export default function AdminPage() {
                       >
                         <input
                           type="file"
-                          accept="image/jpeg,image/png,image/webp"
+                          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                           className="hidden"
                           onChange={(e) =>
                             e.target.files?.[0] && handleCompareFile(e.target.files[0], side)

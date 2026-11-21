@@ -35,6 +35,7 @@ const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/hei
 const VIDEO_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
+const MAX_AI_ANALYSIS_BYTES = 3 * 1024 * 1024;
 
 export default function MuracietPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -44,6 +45,8 @@ export default function MuracietPage() {
   const [mediaError, setMediaError] = useState('');
 
   const [analyzing, setAnalyzing] = useState(false);
+  const [allowAiAnalysis, setAllowAiAnalysis] = useState(false);
+  const [analysisMediaKind, setAnalysisMediaKind] = useState<'image' | 'video'>('image');
   const [analysis, setAnalysis] = useState<CityAnalysis | null>(null);
   const [analysisError, setAnalysisError] = useState('');
 
@@ -53,20 +56,28 @@ export default function MuracietPage() {
   const [location, setLocation] = useState('');
 
   const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [trackingCode, setTrackingCode] = useState('');
   const [copied, setCopied] = useState(false);
 
   const runAnalysis = useCallback(
-    async (imageFile: File, currentCategory: CategoryId | '', currentDescription: string) => {
+    async (mediaFile: File, currentCategory: CategoryId | '', currentDescription: string) => {
+      setAnalysisMediaKind(VIDEO_TYPES.has(mediaFile.type) ? 'video' : 'image');
+      if (mediaFile.size > MAX_AI_ANALYSIS_BYTES) {
+        setAnalyzing(false);
+        setAnalysis(null);
+        setAnalysisError('AI təhlili üçün şəkil və video 3 MB-dan kiçik olmalıdır. Daha böyük faylı müraciətə əlavə edə bilərsiniz; təsviri əl ilə daxil edin.');
+        return;
+      }
       setAnalyzing(true);
       setAnalysis(null);
       setAnalysisError('');
 
       try {
         const fd = new FormData();
-        fd.append('file', imageFile);
+        fd.append('file', mediaFile);
 
         const res = await fetch('/api/analyze', { method: 'POST', body: fd });
         const data = (await res.json()) as {
@@ -76,7 +87,7 @@ export default function MuracietPage() {
         };
 
         if (!res.ok || !data.success || !data.analysis) {
-          setAnalysisError(data.error || 'Şəkil analizi tamamlana bilmədi.');
+          setAnalysisError(data.error || 'Media analizi tamamlana bilmədi.');
           return;
         }
 
@@ -93,7 +104,7 @@ export default function MuracietPage() {
           setDescription(aiResult.description);
         }
       } catch {
-        setAnalysisError('Şəkil analizi xidməti ilə əlaqə qurmaq alınmadı.');
+        setAnalysisError('Media analizi xidməti ilə əlaqə qurmaq alınmadı.');
       } finally {
         setAnalyzing(false);
       }
@@ -109,7 +120,7 @@ export default function MuracietPage() {
         file.size <= (VIDEO_TYPES.has(file.type) ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)
       );
       if (valid.length !== selected.length) {
-        setMediaError('Şəkillər 10 MB, videolar isə 20 MB-dan kiçik olmalıdır. JPEG, PNG, WEBP, MP4, WEBM və MOV formatlarından istifadə edin.');
+        setMediaError('Şəkillər 10 MB, videolar isə 20 MB-dan kiçik olmalıdır. JPEG, PNG, WEBP, HEIC, HEIF, MP4, WEBM və MOV formatlarından istifadə edin.');
       }
       if (!valid.length) {
         if (!selected.length) setMediaError('Şəkil və ya video seçin.');
@@ -122,6 +133,10 @@ export default function MuracietPage() {
         setMediaError('Bir müraciətə ən çox 5 şəkil və ya video əlavə etmək olar.');
       } else if (valid.length === selected.length) {
         setMediaError('');
+      }
+      if (nextFiles.reduce((total, file) => total + file.size, 0) > 50 * 1024 * 1024) {
+        setMediaError('Bir müraciətə ümumilikdə ən çox 50 MB media əlavə etmək olar.');
+        return;
       }
       setFiles(nextFiles);
 
@@ -142,12 +157,22 @@ export default function MuracietPage() {
 
       setPreviews((prev) => [...prev, ...readPreviews].slice(0, 5));
 
-      const imageToAnalyze = [...files, ...addedFiles].find((file) => IMAGE_TYPES.has(file.type));
-      if (!analysis && imageToAnalyze) {
-        await runAnalysis(imageToAnalyze, category, description);
+      const mediaToAnalyze = [...files, ...addedFiles].find((file) =>
+        (IMAGE_TYPES.has(file.type) || VIDEO_TYPES.has(file.type)) && file.size <= MAX_AI_ANALYSIS_BYTES
+      );
+      if (!analysis && mediaToAnalyze) {
+        if (allowAiAnalysis) {
+          await runAnalysis(mediaToAnalyze, category, description);
+        } else {
+          setAnalysisMediaKind(VIDEO_TYPES.has(mediaToAnalyze.type) ? 'video' : 'image');
+          setAnalysisError('Media müraciətə əlavə edildi. AI təhlili üçün Google Gemini-yə ötürülməsinə razılıq verməlisiniz.');
+        }
+      } else if (!analysis && addedFiles.some((file) => VIDEO_TYPES.has(file.type) || IMAGE_TYPES.has(file.type))) {
+        setAnalysisMediaKind(addedFiles.some((file) => VIDEO_TYPES.has(file.type)) ? 'video' : 'image');
+        setAnalysisError('Media müraciətə əlavə edildi. AI təhlili üçün fayl 3 MB-dan kiçik olmalıdır; daha böyük faylı təsviri əl ilə daxil edib göndərə bilərsiniz.');
       }
     },
-    [analysis, category, description, files, runAnalysis]
+    [allowAiAnalysis, analysis, category, description, files, runAnalysis]
   );
 
   const removeFile = (index: number) => {
@@ -168,9 +193,10 @@ export default function MuracietPage() {
 
   const detectLocation = () => {
     if (!navigator.geolocation) {
-      setLocation('Cəfər Cabbarlı küçəsi, Bakı');
+      setLocationError('Bu cihaz GPS məkanını paylaşmır. Ünvanı əl ilə daxil edin.');
       return;
     }
+    setLocationError('');
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -178,9 +204,10 @@ export default function MuracietPage() {
           `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (GPS koordinatı)`
         );
         setLocating(false);
-      },
-      () => {
-        setLocation('Bakı şəhəri, mərkəzi ərazi');
+      }, (error) => {
+        setLocationError(error.code === error.PERMISSION_DENIED
+          ? 'Məkan icazəsi verilmədi. Ünvanı əl ilə daxil edin.'
+          : 'GPS mövqeyi müəyyən edilə bilmədi. Ünvanı əl ilə daxil edin.');
         setLocating(false);
       },
       { timeout: 6000 }
@@ -201,20 +228,27 @@ export default function MuracietPage() {
     }
 
     setSubmitting(true);
+    const uploadedMedia: Array<{ path: string; type: string; size: number; proof: string }> = [];
     try {
-      const mediaUrls: string[] = [];
-      const mediaTypes: Array<'image' | 'video'> = [];
-      for (const file of files) {
-        const mediaType = VIDEO_TYPES.has(file.type) ? 'video' : 'image';
-        const extension = file.type === 'video/quicktime' ? 'mov' : file.type.split('/')[1] || 'jpg';
-        const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-        const { error } = await supabase.storage.from('muraciet-media').upload(path, file, {
-          contentType: file.type,
-          upsert: false,
+      if (files.length) {
+        const signingResponse = await fetch('/api/uploads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ files: files.map((file) => ({ type: file.type, size: file.size })) }),
         });
-        if (error) throw error;
-        mediaUrls.push(path);
-        mediaTypes.push(mediaType);
+        const signingData = await signingResponse.json() as {
+          files?: Array<{ path: string; token: string; type: string; size: number; proof: string }>;
+          error?: string;
+        };
+        if (!signingResponse.ok || !signingData.files || signingData.files.length !== files.length) {
+          throw new Error(signingData.error || 'Media yükləməsini hazırlamaq alınmadı.');
+        }
+        for (const [index, file] of Array.from(files.entries())) {
+          const signed = signingData.files[index];
+          const { error } = await supabase.storage.from('muraciet-media').uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type });
+          if (error) throw error;
+          uploadedMedia.push({ path: signed.path, type: signed.type, size: signed.size, proof: signed.proof });
+        }
       }
 
       const res = await fetch('/api/submit', {
@@ -226,8 +260,7 @@ export default function MuracietPage() {
           priority,
           location: location.trim(),
           analysis,
-          mediaUrls,
-          mediaTypes,
+          media: uploadedMedia,
         }),
       });
       const data = (await res.json()) as {
@@ -237,13 +270,15 @@ export default function MuracietPage() {
       };
 
       if (!res.ok || !data.success || !data.tracking_code) {
+        if (uploadedMedia.length) await fetch('/api/uploads', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: uploadedMedia }) }).catch(() => undefined);
         setSubmitError(data.error || 'Müraciət göndərilə bilmədi.');
         return;
       }
 
       setTrackingCode(data.tracking_code);
-    } catch {
-      setSubmitError('Server ilə əlaqə zamanı xəta baş verdi. Yenidən yoxlayın.');
+    } catch (error) {
+      if (uploadedMedia.length) await fetch('/api/uploads', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: uploadedMedia }) }).catch(() => undefined);
+      setSubmitError(error instanceof Error ? error.message : 'Server ilə əlaqə zamanı xəta baş verdi. Yenidən yoxlayın.');
     } finally {
       setSubmitting(false);
     }
@@ -263,6 +298,7 @@ export default function MuracietPage() {
   const resetForm = () => {
     setFiles([]);
     setPreviews([]);
+    setAllowAiAnalysis(false);
     setAnalysis(null);
     setAnalysisError('');
     setCategory('');
@@ -301,11 +337,10 @@ export default function MuracietPage() {
               Müraciətiniz qeydə alındı
             </h1>
             <p className="mx-auto mt-2.5 max-w-md text-sm leading-relaxed text-[#475569]">
-              Müraciətiniz{' '}
+              Müraciətiniz sistemdə qeydə alındı. Təklif olunan qurum:{' '}
               <span className="font-semibold text-[#102A35]">
                 {selectedCategoryMeta?.department ?? 'aidiyyəti icra qurumuna'}
-              </span>{' '}
-              yönləndirildi. İcra mərhələlərini aşağıdakı izləmə kodu ilə yoxlaya bilərsiniz.
+              </span>. Müraciət operator baxış növbəsinə əlavə edildi. Statusu izləmə kodu ilə yoxlaya bilərsiniz.
             </p>
 
             <div className="mx-auto mt-6 flex max-w-sm items-center justify-between gap-3 rounded-xl border border-[#E2E8E8] bg-[#F7F9FB] px-4 py-3.5">
@@ -371,8 +406,8 @@ export default function MuracietPage() {
             İnfrastruktur problemini bildirin
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#475569] sm:text-base">
-            Foto əlavə etdikdə süni intellekt problemi ilkin təhlil edir. Bütün sahələri
-            göndərməzdən əvvəl redaktə edə bilərsiniz.
+            Şəkil və 3 MB-dan kiçik video süni intellektlə təhlil olunur. Daha böyük videolar müraciətə əlavə edilir, təsvir isə əl ilə yazılır.
+            Göndərməzdən əvvəl bütün sahələri redaktə edə bilərsiniz.
           </p>
         </div>
 
@@ -390,10 +425,29 @@ export default function MuracietPage() {
                     Addım 01
                   </span>
                   <h2 className="font-display mt-0.5 text-lg font-semibold text-[#102A35]">
-                    Fotoşəkil əlavə edin
+                    Foto və ya video əlavə edin
                   </h2>
                 </div>
-                <span className="text-xs text-[#64748B]">Maks. 5 fayl · şəkil 10 MB, video 20 MB</span>
+                <span className="text-xs text-[#64748B]">Maks. 5 fayl · cəmi 50 MB</span>
+              </div>
+
+              <div className="mt-4 rounded-lg border border-[#F0D8A8] bg-[#FFF9EB] p-3 text-xs leading-relaxed text-[#684D17]">
+                AI təhlili üçün seçdiyiniz 3 MB-dək fayl Google Gemini xidmətinə göndərilir. Google Free Tier sorğularındakı məzmunu məhsullarının təkmilləşdirilməsi üçün istifadə edə bilər. Məxfi şəxsi məlumatları olan media yükləməyin.
+                <label className="mt-2 flex cursor-pointer items-start gap-2 font-semibold text-[#4A3712]">
+                  <input
+                    type="checkbox"
+                    checked={allowAiAnalysis}
+                    onChange={(event) => {
+                      const accepted = event.target.checked;
+                      setAllowAiAnalysis(accepted);
+                      if (!accepted) return;
+                      const mediaFile = files.find((file) => (IMAGE_TYPES.has(file.type) || VIDEO_TYPES.has(file.type)) && file.size <= MAX_AI_ANALYSIS_BYTES);
+                      if (mediaFile && !analysis && !analyzing) void runAnalysis(mediaFile, category, description);
+                    }}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#087F70]"
+                  />
+                  <span>Razıyam: seçilmiş media AI təhlili üçün Google Gemini-yə göndərilsin.</span>
+                </label>
               </div>
 
               <div
@@ -429,7 +483,7 @@ export default function MuracietPage() {
                   Şəkil və ya videonu bura sürükləyin və ya cihazdan seçin
                 </p>
                 <p className="mt-1 text-xs text-[#64748B]">
-                  JPEG, PNG, WEBP, MP4, WEBM və MOV dəstəklənir. İlk şəkil yüklənəndə ilkin AI təhlili başlayır.
+                  JPEG, PNG, WEBP, HEIC, HEIF, MP4, WEBM və MOV dəstəklənir. AI təhlili şəkil və ya videonun həqiqi məzmununu yoxlayır (maksimum 3 MB).
                 </p>
               </div>
 
@@ -468,7 +522,7 @@ export default function MuracietPage() {
                       <button
                         type="button"
                         onClick={() => removeFile(idx)}
-                        aria-label={`Şəkli sil ${idx + 1}`}
+                        aria-label={`Faylı sil ${idx + 1}`}
                         className="absolute top-1.5 right-1.5 grid h-6 w-6 place-items-center rounded-full bg-[#102A35]/80 text-white transition-opacity hover:bg-[#DC2626]"
                       >
                         <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -488,10 +542,10 @@ export default function MuracietPage() {
                       ) : (
                         <Sparkles className="h-4 w-4" aria-hidden="true" />
                       )}
-                      <span>Süni intellekt tərəfindən ilkin təhlil</span>
+                          <span>{analysisMediaKind === 'video' ? 'Videonun AI təhlili' : 'Süni intellekt tərəfindən ilkin təhlil'}</span>
                     </div>
 
-                    {analysis && files.some((file) => IMAGE_TYPES.has(file.type)) && (
+                    {analysis && files.some((file) => (analysisMediaKind === 'video' ? VIDEO_TYPES : IMAGE_TYPES).has(file.type) && file.size <= MAX_AI_ANALYSIS_BYTES) && (
                       <div className="flex items-center gap-3">
                         <span className="font-mono-tabular text-xs font-semibold text-[#07564F]">
                           Etibarlılıq: {Math.round(analysis.confidence * 100)}%
@@ -499,8 +553,8 @@ export default function MuracietPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const imageFile = files.find((file) => IMAGE_TYPES.has(file.type));
-                            if (imageFile) void runAnalysis(imageFile, category, description);
+                            const mediaFile = files.find((file) => (analysisMediaKind === 'video' ? VIDEO_TYPES : IMAGE_TYPES).has(file.type) && file.size <= MAX_AI_ANALYSIS_BYTES);
+                            if (mediaFile) void runAnalysis(mediaFile, category, description);
                           }}
                           className="inline-flex items-center gap-1 text-xs font-medium text-[#087F70] hover:underline"
                         >
@@ -513,7 +567,7 @@ export default function MuracietPage() {
 
                   {analyzing ? (
                     <p className="mt-2 text-sm text-[#3E4946]">
-                      Foto analiz edilir, problemin növü və təsviri hazırlanır...
+                      {analysisMediaKind === 'video' ? 'Videonun məzmunu və zaman ardıcıllığı analiz edilir...' : 'Foto analiz edilir, problemin növü və təsviri hazırlanır...'}
                     </p>
                   ) : analysisError ? (
                     <div className="mt-2 flex items-start gap-2 text-sm text-[#B45309]">
@@ -692,7 +746,7 @@ export default function MuracietPage() {
                         id="complaint-location"
                         type="text"
                         value={location}
-                        onChange={(e) => setLocation(e.target.value)}
+                        onChange={(e) => { setLocation(e.target.value); setLocationError(''); }}
                         placeholder="Küçə adı, bina №..."
                         className="civic-input h-12 flex-1 px-3.5 text-sm"
                       />
@@ -706,6 +760,10 @@ export default function MuracietPage() {
                         <span>{locating ? 'Təyin edilir...' : 'GPS'}</span>
                       </button>
                     </div>
+                    <p className="mt-2 text-xs text-[#64748B]">
+                      GPS ünvanı müəyyən etmir; cari koordinatları əlavə edir.
+                    </p>
+                    {locationError && <p role="status" className="mt-1 text-xs font-medium text-[#B45309]">{locationError}</p>}
                   </div>
                 </div>
               </div>
@@ -723,7 +781,7 @@ export default function MuracietPage() {
 
             <ul className="mt-4 divide-y divide-[#E2E8E8] border-y border-[#E2E8E8] text-sm">
               <li className="flex items-center justify-between py-2.5">
-                <span className="text-[#475569]">Foto sübut</span>
+                <span className="text-[#475569]">Media sübutu</span>
                 <span className="font-mono-tabular text-xs font-semibold text-[#102A35]">
                   {files.length > 0 ? `${files.length} fayl` : 'Əlavə edilməyib'}
                 </span>
@@ -745,12 +803,12 @@ export default function MuracietPage() {
             <div className="mt-4 rounded-lg border border-[#E2E8E8] bg-[#F7F9FB] p-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-[#087F70]">
                 <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>Yönləndiriləcək qurum</span>
+                <span>Təklif olunan qurum</span>
               </div>
               <p className="mt-1 text-xs leading-relaxed text-[#475569]">
                 {selectedCategoryMeta
                   ? selectedCategoryMeta.department
-                  : 'Kateqoriya seçildikdə məsul qurum avtomatik təyin olunacaq.'}
+                  : 'Kateqoriya seçildikdə uyğun qurum barədə təklif göstəriləcək.'}
               </p>
             </div>
 
