@@ -20,7 +20,7 @@ export type CityComparison = {
 
 type GeminiResponse = {
   output_text?: string
-  error?: { message?: string }
+  error?: { message?: string; code?: number; status?: string }
 }
 
 export class CityAnalysisError extends Error {
@@ -194,34 +194,86 @@ async function requestGemini({
   apiKey,
   body,
   fetcher,
-  timeoutMs = 20_000,
+  timeoutMs = 15_000,
+  allowFallback = true,
 }: {
   apiKey?: string
   body: object
   fetcher: typeof fetch
   timeoutMs?: number
+  allowFallback?: boolean
 }): Promise<string> {
   if (!apiKey) {
     throw new CityAnalysisError('Gemini API açarı konfiqurasiya edilməyib.', 503, 'CONFIGURATION_ERROR')
   }
 
-  const response = await fetcher('https://generativelanguage.googleapis.com/v1beta/interactions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  })
-  const payload = (await response.json().catch(() => ({}))) as GeminiResponse
+  const primaryModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
+  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.7-flash'
+  const models = allowFallback && fallbackModel !== primaryModel
+    ? [primaryModel, fallbackModel]
+    : [primaryModel]
+  let lastProviderStatus = 502
 
-  if (!response.ok) {
-    console.error('[CityAI Gemini] Provider request failed', { status: response.status })
-    throw new CityAnalysisError('Şəkil analizi xidməti hazırda cavab vermir. Bir az sonra yenidən yoxlayın.', 502, 'PROVIDER_ERROR')
-  }
-  if (!payload.output_text) {
-    throw new CityAnalysisError('Gemini analizi boş cavab qaytardı.', 502, 'INVALID_RESPONSE')
+  for (const [modelIndex, model] of models.entries()) {
+    // Retry the primary model once for transient provider/network failures, then fail over.
+    const attempts = modelIndex === 0 ? 2 : 1
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        const requestBody = { ...body, model }
+        const response = await fetcher('https://generativelanguage.googleapis.com/v1beta/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(timeoutMs),
+        })
+        const payload = (await response.json().catch(() => ({}))) as GeminiResponse
+
+        if (response.ok && payload.output_text) {
+          if (model !== primaryModel) {
+            console.warn('[CityAI Gemini] Fallback model succeeded', { model })
+          }
+          return payload.output_text
+        }
+
+        if (response.ok) {
+          throw new CityAnalysisError('Gemini analizi boş cavab qaytardı.', 502, 'INVALID_RESPONSE')
+        }
+
+        lastProviderStatus = response.status
+        const transient = [408, 429, 500, 502, 503, 504].includes(response.status)
+        console.error('[CityAI Gemini] Provider request failed', {
+          model,
+          status: response.status,
+          providerCode: payload.error?.code ?? null,
+          providerStatus: payload.error?.status ?? null,
+          message: payload.error?.message?.slice(0, 240) ?? null,
+          requestId: response.headers.get('x-goog-request-id') ?? response.headers.get('x-request-id') ?? null,
+        })
+
+        if (!transient) {
+          throw new CityAnalysisError('Gemini sorğunu qəbul etmədi. API konfiqurasiyasını yoxlamaq lazımdır.', 502, 'PROVIDER_ERROR')
+        }
+      } catch (error) {
+        if (error instanceof CityAnalysisError) throw error
+        console.error('[CityAI Gemini] Network request failed', {
+          model,
+          error: error instanceof Error ? error.name : 'UnknownError',
+        })
+        lastProviderStatus = 504
+      }
+
+      if (attempt + 1 < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)))
+      }
+    }
   }
 
-  return payload.output_text
+  console.error('[CityAI Gemini] All model attempts failed', { models, lastProviderStatus })
+  throw new CityAnalysisError(
+    'AI analizi hazırda əlçatan deyil. Fayl müraciətə əlavə olunub; təsviri əl ilə daxil edə və ya bir az sonra yenidən cəhd edə bilərsiniz.',
+    503,
+    'PROVIDER_ERROR',
+  )
 }
 
 export async function analyzeCityImage({ apiKey, imageBase64, mimeType, fetcher = fetch }: {
@@ -243,7 +295,8 @@ export async function analyzeCityVideo({ apiKey, videoBase64, mimeType, fetcher 
     apiKey,
     body: createCityVideoAnalysisRequest(videoBase64, mimeType),
     fetcher,
-    timeoutMs: 50_000,
+    timeoutMs: 45_000,
+    allowFallback: false,
   }))
 }
 
