@@ -1,85 +1,329 @@
-import { LiquidMetalLink } from '@/components/LiquidMetalLink'
-import { SiteHeader } from '@/components/SiteHeader'
+import Link from 'next/link';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Camera,
+  CheckCircle2,
+  GitCompareArrows,
+  Route,
+  ShieldCheck,
+} from 'lucide-react';
+import { SiteHeader } from '@/components/SiteHeader';
+import { SiteFooter } from '@/components/SiteFooter';
+import { HeroInteractivePreview } from '@/components/HeroInteractivePreview';
+import { RecentComplaints } from '@/components/RecentComplaints';
 
-const capabilities = [
+const CAPABILITIES = [
   {
     number: '01',
-    title: 'Şəkildən problemi anlayır',
-    text: 'Yol, işıqlandırma, təmizlik, su və yaşıllıq problemlərini vizual siqnallardan ayırd edir.',
+    icon: Camera,
+    title: 'Media əsasında problem təsnifatı',
+    description:
+      'Yol, küçə işıqlandırması, təmizlik, su sızması və yaşıllıq problemləri üçün foto və video əsasında ilkin təsnifat təklif edir.',
+    outcome: 'Təsviri və açar sözləri müraciətdən əvvəl nəzərdən keçirib düzəldə bilərsiniz.',
   },
   {
     number: '02',
-    title: 'Aydın analiz qaytarır',
-    text: 'Problemin növü, təcililiyi, qısa təsviri və etibar göstəricisi vahid nəticədə təqdim olunur.',
+    icon: ShieldCheck,
+    title: 'Süni intellekt təklifi, vətəndaş təsdiqi',
+    description:
+      'AI yalnız ilkin təhlil təqdim edir; kateqoriya, təcililik və ünvan məlumatlarını göndərməzdən əvvəl istədiyiniz kimi dəyişə bilərsiniz.',
+    outcome: 'Müraciətin aid ola biləcəyi qurum barədə təklifi əvvəlcədən görürsünüz.',
   },
   {
     number: '03',
-    title: 'Müraciəti izləməyə kömək edir',
-    text: 'Müraciət kodu ilə prosesə baxın və şəhərinizdəki məsələni görünən saxlayın.',
+    icon: Route,
+    title: 'Şəffaf mərhələli izləmə xətti',
+    description:
+      'Hər müraciətə verilən izləmə kodu ilə qəbul, baxış, icra və həll mərhələlərinin tarixçəsini yoxlamaq mümkündür.',
+    outcome: 'Vətəndaş müraciətin hansı qurumda və nə vaxtdan baxıldığını görür.',
   },
-]
+  {
+    number: '04',
+    icon: GitCompareArrows,
+    title: 'Əvvəl və sonra vizual həll təsdiqi',
+    description:
+      'İcra tamamlandıqdan sonra ərazinin sonrakı fotosu ilkin foto ilə müqayisə edilərək eyni məkan və həll keyfiyyəti yoxlanılır.',
+    outcome: 'Müqayisə aləti əvvəl və sonra materiallarını nəzərdən keçirməyə kömək edir.',
+  },
+];
 
-const process = [
-  ['01', 'Şəkli əlavə edin', 'Aydın və real vəziyyəti göstərən şəkil seçin.'],
-  ['02', 'AI analizi alın', 'CityAI problemi strukturlaşdırılmış məlumat kimi oxuyur.'],
-  ['03', 'Müraciəti göndərin', 'Təsviri yoxlayın, ünvanı qeyd edin və müraciəti tamamlayın.'],
-]
+const PROCESS_STEPS = [
+  {
+    step: '01',
+    title: 'Şəkil və ya video əlavə edin',
+    detail:
+      'Foto (JPEG, PNG, WEBP, HEIC, HEIF) və ya video (MP4, WEBM, MOV) əlavə edin. GPS ilə cari koordinatları daxil edə bilərsiniz.',
+  },
+  {
+    step: '02',
+    title: 'Süni intellekt ilkin təhlilini yoxlayın',
+    detail:
+      'CityAI problemin növünü, təcililik dərəcəsini və məsul dövlət qurumunu təklif edir. Siz mətnə düzəliş edib təsdiqləyirsiniz.',
+  },
+  {
+    step: '03',
+    title: 'İzləmə kodunu alın və nəticəni izləyin',
+    detail:
+      'Müraciət göndərildikdən sonra dərhal izləmə kodu təqdim olunur. Bütün yenilikləri izləmə səhifəsindən yoxlaya bilərsiniz.',
+  },
+];
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#07111f] text-white">
+    <div className="site-page flex min-h-screen flex-col text-[#102A35]">
       <SiteHeader />
 
-      <section className="city-immersive-hero relative isolate flex min-h-[calc(100svh-72px)] items-center justify-center overflow-hidden px-5 py-20 sm:px-8">
-        <div className="city-hero-grain absolute inset-0 -z-10" aria-hidden="true" />
-        <div className="city-hero-content mx-auto max-w-4xl text-center">
-          <div className="city-hero-eyebrow"><span className="h-1.5 w-1.5 rounded-full bg-cyan-200" />Şəhər üçün vizual AI</div>
-          <h1 className="font-averia mt-6 text-balance text-[clamp(3.25rem,9vw,7rem)] font-normal leading-[.92] tracking-[-.055em] text-white">
-            Şəhərdəki problemi <span className="city-hero-accent">görünən edin.</span>
-          </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-pretty text-base leading-8 text-white/78 sm:text-lg">
-            CityAI, şəhər infrastrukturundakı problemi şəkildən analiz etməyə və müraciəti daha aydın, ardıcıl formada göndərməyə kömək edir.
-          </p>
-          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <LiquidMetalLink href="/muraciet" label="Şəkli analiz et" trailing="→" className="min-w-[164px]" />
-            <LiquidMetalLink href="/izle" label="Müraciəti izlə" className="min-w-[164px] liquid-metal-button--quiet" />
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="border-b border-[#E2E8E8] bg-white/65 backdrop-blur-[2px]">
+          <div className="mx-auto max-w-[1280px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+            <div className="grid items-stretch gap-10 lg:grid-cols-12 lg:gap-12">
+              <div className="flex flex-col justify-between lg:col-span-7">
+                <div>
+                  <p className="inline-flex items-center gap-2 rounded-full border border-[#E2E8E8] bg-white/90 px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-[#07564F] shadow-sm sm:text-sm">
+                    <span className="h-2 w-2 rounded-full bg-[#087F70]" aria-hidden="true" />
+                    Ağıllı şəhər üçün açıq müraciət platforması
+                  </p>
+                  <h1 className="motion-heading font-display mt-4 max-w-2xl text-balance text-[clamp(2.25rem,4vw,3.5rem)] font-bold leading-[1.12] tracking-[-0.03em] text-[#102A35]">
+                    Şəhərinizdəki problemi bildirin.{' '}
+                    <span className="text-[#087F70]">Dəyişikliyin bir hissəsi olun.</span>
+                  </h1>
+                  <p className="mt-5 max-w-xl text-base leading-relaxed text-[#475569] sm:text-lg">
+                    CityAI şəhər problemlərini foto və ya video ilə bildirməyə, ilkin AI təklifini
+                    nəzərdən keçirməyə və müraciətin gedişini izləmə kodu ilə yoxlamağa imkan verir.
+                  </p>
+
+                  <div className="mt-8 flex flex-wrap items-center gap-3">
+                    <Link
+                      href="/muraciet"
+                      className="inline-flex h-[52px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-[#087F70] px-6 text-base font-semibold text-white transition-colors duration-150 hover:bg-[#06695E] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#087F70]/30"
+                    >
+                      <span>Müraciət yarat</span>
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+
+                    <Link
+                      href="/izle"
+                      className="inline-flex h-[52px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-[#E2E8E8] bg-white px-6 text-base font-medium text-[#102A35] transition-colors duration-150 hover:bg-[#F1F5F5] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#087F70]/20"
+                    >
+                      <span>Müraciəti izlə</span>
+                    </Link>
+                  </div>
+                  <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-[#64748B] sm:text-sm">
+                    <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#087F70]" aria-hidden="true" /> İzləmə kodu ilə şəxsi status</span>
+                    <span className="inline-flex items-center gap-2"><Camera className="h-4 w-4 text-[#087F70]" aria-hidden="true" /> Foto və video</span>
+                    <span className="inline-flex items-center gap-2"><Route className="h-4 w-4 text-[#087F70]" aria-hidden="true" /> Şəffaf mərhələlər</span>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex items-start gap-2.5 border-t border-[#E2E8E8] pt-5 text-xs leading-relaxed text-[#64748B]">
+                  <CheckCircle2
+                    className="mt-0.5 h-4 w-4 shrink-0 text-[#087F70]"
+                    aria-hidden="true"
+                  />
+                  <span>
+                    AI media analizi müraciət üçün ilkin təklif yaradır; yekun
+                    kateqoriya və təsviri göndərməzdən əvvəl siz təsdiqləyirsiniz.
+                  </span>
+                </div>
+              </div>
+
+              <div className="lg:col-span-5">
+                <HeroInteractivePreview />
+              </div>
+            </div>
+
+            {/* Full-width Operational Metrics Strip */}
+            <div className="mt-12 grid grid-cols-2 divide-y divide-[#E2E8E8] border-t border-[#E2E8E8] pt-8 sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+              <div className="pb-4 sm:pr-6 sm:pb-0">
+                <p className="font-display tabular-nums text-2xl font-bold tracking-[-0.02em] text-[#102A35]">
+                  6 sahə
+                </p>
+                <p className="mt-1 text-sm text-[#64748B]">
+                  Yol, işıq, su, təmizlik, yaşıllıq və digər
+                </p>
+              </div>
+              <div className="pb-4 sm:px-6 sm:pb-0">
+                <p className="font-display tabular-nums text-2xl font-bold tracking-[-0.02em] text-[#102A35]">
+                  AI media təhlili
+                </p>
+                <p className="mt-1 text-sm text-[#64748B]">
+                  Dəstəklənən media üçün ilkin təsnifat təklifi
+                </p>
+              </div>
+              <div className="pt-4 sm:px-6 sm:pt-0">
+                <p className="font-display tabular-nums text-2xl font-bold tracking-[-0.02em] text-[#102A35]">
+                  5 mərhələ
+                </p>
+                <p className="mt-1 text-sm text-[#64748B]">
+                  Qəbuldan həllədək tam tarixçə izləməsi
+                </p>
+              </div>
+              <div className="pt-4 sm:pl-6 sm:pt-0">
+                <p className="font-display tabular-nums text-2xl font-bold tracking-[-0.02em] text-[#102A35]">
+                  0–100 bal
+                </p>
+                <p className="mt-1 text-sm text-[#64748B]">
+                  Əvvəl / sonra vizual həll qiymətləndirməsi
+                </p>
+              </div>
+            </div>
           </div>
-          <p className="mx-auto mt-5 max-w-xl text-xs leading-5 text-white/55">Şəkil analizi müraciəti sürətləndirmək üçün köməkçi nəticə yaradır; son məlumatı göndərməzdən əvvəl siz yoxlayırsınız.</p>
-        </div>
-        <a href="#imkanlar" className="absolute bottom-7 left-1/2 hidden -translate-x-1/2 items-center gap-2 text-[11px] font-medium uppercase tracking-[.18em] text-white/55 transition-colors hover:text-white sm:flex">
-          Kəşf et <span aria-hidden="true" className="animate-bounce">↓</span>
-        </a>
-      </section>
+        </section>
 
-      <section id="imkanlar" className="border-y border-white/10 bg-[#0a1829] py-20 sm:py-24">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8">
-          <div className="max-w-2xl"><div className="city-eyebrow">Fokuslanmış axın</div><h2 className="font-syne mt-5 text-3xl font-bold tracking-[-.04em] text-white sm:text-4xl">Bir şəhər problemi. Daha aydın başlanğıc.</h2></div>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {capabilities.map((item) => (
-              <article key={item.number} className="city-surface rounded-2xl p-6 transition-transform duration-200 hover:-translate-y-1">
-                <span className="font-syne text-sm font-bold text-teal-300">{item.number}</span>
-                <h3 className="font-syne mt-9 text-xl font-bold tracking-[-.03em] text-white">{item.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-300">{item.text}</p>
-              </article>
-            ))}
+        {/* Capabilities Section */}
+        <section id="imkanlar" className="mx-auto max-w-[1280px] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-[#087F70]">Platforma imkanları</p>
+            <h2 className="font-display mt-2 text-balance text-3xl font-bold tracking-[-0.025em] text-[#102A35] sm:text-[36px]">
+              Bir şəhər problemi üçün aydın və etibarlı axın.
+            </h2>
+            <p className="mt-3 text-base leading-relaxed text-[#475569]">
+              Müraciətin yaradılmasından bərpa işlərinin yoxlanılmasına qədər bütün mərhələlər
+              vahid standart üzrə qurulub.
+            </p>
           </div>
-        </div>
-      </section>
 
-      <section id="proses" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28">
-        <div className="grid gap-12 lg:grid-cols-[.75fr_1.25fr] lg:items-start">
-          <div><div className="city-eyebrow">Sadə proses</div><h2 className="font-syne mt-5 text-3xl font-bold tracking-[-.04em] sm:text-4xl">Məsələni bildirmək üçün üç aydın addım.</h2><p className="mt-5 max-w-sm text-sm leading-7 text-slate-300">Texnologiya diqqəti yayındırmamalıdır. CityAI məlumatı daha tez toplamaq üçün arxa planda işləyir.</p></div>
-          <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[.025] px-5 sm:px-7">
-            {process.map(([number, title, text]) => <div key={number} className="grid gap-4 py-6 sm:grid-cols-[72px_1fr] sm:gap-6"><span className="font-syne text-2xl font-bold text-teal-300">{number}</span><div><h3 className="font-syne text-lg font-bold text-white">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-300">{text}</p></div></div>)}
+          <div className="mt-10 grid divide-y divide-[#E2E8E8] border-y border-[#E2E8E8] bg-white md:grid-cols-2 md:divide-x md:divide-y-0">
+            {CAPABILITIES.map((cap, idx) => {
+              const Icon = cap.icon;
+              const isBottomRow = idx >= 2;
+              return (
+                <article
+                  key={cap.number}
+                  className={`p-6 sm:p-8 ${isBottomRow ? 'md:border-t md:border-[#E2E8E8]' : ''}`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-mono-tabular text-sm font-semibold text-[#087F70]">
+                      {cap.number}
+                    </span>
+                    <div className="grid h-9 w-9 place-items-center rounded-lg border border-[#E2E8E8] bg-[#F7F9FB] text-[#087F70]">
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    </div>
+                  </div>
+                  <h3 className="font-display mt-5 text-xl font-semibold tracking-[-0.015em] text-[#102A35]">
+                    {cap.title}
+                  </h3>
+                  <p className="mt-2.5 text-sm leading-relaxed text-[#475569]">
+                    {cap.description}
+                  </p>
+                  <p className="mt-4 border-t border-[#E2E8E8] pt-3 text-xs font-medium text-[#07564F]">
+                    Nəticə: {cap.outcome}
+                  </p>
+                </article>
+              );
+            })}
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="mx-5 mb-12 overflow-hidden rounded-[28px] border border-teal-200/15 bg-[radial-gradient(circle_at_top_right,rgba(45,212,191,.19),transparent_38%),linear-gradient(135deg,#0d2639,#0a1829)] sm:mx-8 lg:mx-auto lg:max-w-7xl">
-        <div className="grid gap-8 px-6 py-10 sm:px-10 sm:py-14 md:grid-cols-[1fr_auto] md:items-center"><div><p className="text-sm font-bold uppercase tracking-[.12em] text-teal-200">CityAI ilə başla</p><h2 className="font-syne mt-3 text-3xl font-bold tracking-[-.04em] text-white">Şəkli yükləyin, problemi birlikdə aydınlaşdıraq.</h2></div><LiquidMetalLink href="/muraciet" label="Müraciətə keç" trailing="→" className="h-fit justify-self-start md:justify-self-end" /></div>
-      </section>
+        {/* How It Works Section */}
+        <section id="proses" className="border-y border-[#E2E8E8] bg-white">
+          <div className="mx-auto max-w-[1280px] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+            <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
+              <div className="lg:col-span-5">
+                <p className="text-sm font-semibold text-[#087F70]">Necə işləyir?</p>
+                <h2 className="font-display mt-2 text-balance text-3xl font-bold tracking-[-0.025em] text-[#102A35]">
+                  Məsələni bildirmək üçün üç sadə addım.
+                </h2>
+                <p className="mt-4 text-base leading-relaxed text-[#475569]">
+                  Uzun formalar doldurmağa ehtiyac yoxdur. Şəkil əlavə edildikdə sistem mətni və
+                  kateqoriyanı hazırlayır, siz isə yalnız təsdiqləyirsiniz.
+                </p>
 
-      <footer className="border-t border-white/10 py-8 text-center text-sm text-slate-500">CityAI · Şəhər problemləri üçün məsuliyyətli AI dəstəyi</footer>
-    </main>
-  )
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <Link
+                    href="/muraciet"
+                    className="inline-flex h-12 items-center gap-2 rounded-lg bg-[#087F70] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#06695E]"
+                  >
+                    <span>İndi müraciət yarat</span>
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                  <Link
+                    href="/muqayise"
+                    className="inline-flex h-12 items-center gap-2 rounded-lg border border-[#E2E8E8] bg-white px-5 text-sm font-medium text-[#102A35] transition-colors hover:bg-[#F1F5F5]"
+                  >
+                    <span>Əvvəl / Sonra yoxla</span>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="lg:col-span-7">
+                <div className="divide-y divide-[#E2E8E8] rounded-[14px] border border-[#E2E8E8] bg-[#F7F9FB]">
+                  {PROCESS_STEPS.map((item) => (
+                    <div
+                      key={item.step}
+                      className="grid gap-3 p-6 sm:grid-cols-[64px_1fr] sm:gap-5"
+                    >
+                      <span className="font-mono-tabular text-2xl font-bold text-[#087F70]">
+                        {item.step}
+                      </span>
+                      <div>
+                        <h3 className="font-display text-lg font-semibold text-[#102A35]">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1.5 text-sm leading-relaxed text-[#475569]">
+                          {item.detail}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Recent Tracked Complaints Section */}
+        <section className="mx-auto max-w-[1280px] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-sm font-semibold text-[#087F70]">İctimai izləmə reyestri</p>
+              <h2 className="font-display mt-2 text-2xl font-bold tracking-[-0.02em] text-[#102A35] sm:text-3xl">
+                Son qeydə alınmış müraciətlər
+              </h2>
+            </div>
+            <Link
+              href="/izle"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#087F70] transition-colors hover:text-[#06695E]"
+            >
+              <span>İzləmə kodu ilə axtar</span>
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <RecentComplaints />
+          </div>
+        </section>
+
+        {/* Bottom CTA Band */}
+        <section className="mx-auto max-w-[1280px] px-4 pb-16 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-start justify-between gap-6 rounded-[14px] border border-[#087F70]/25 bg-[#E6F5F1] px-6 py-8 sm:flex-row sm:items-center sm:px-10 sm:py-10">
+            <div className="max-w-xl">
+              <p className="text-sm font-semibold text-[#087F70]">CityAI ilə şəhər nəzarəti</p>
+              <h2 className="font-display mt-2 text-2xl font-bold tracking-[-0.02em] text-[#102A35] sm:text-3xl">
+                Məhəllənizdəki problemi bir dəqiqəyə bildirin.
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-[#3E4946]">
+                Foto və ya video əlavə edin, süni intellektin ilkin təhlilini yoxlayın və izləmə kodu ilə
+                həll prosesini nəzarətdə saxlayın.
+              </p>
+            </div>
+
+            <Link
+              href="/muraciet"
+              className="inline-flex h-12 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-[#087F70] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#06695E]"
+            >
+              <span>Müraciət et</span>
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </section>
+      </main>
+
+      <SiteFooter />
+    </div>
+  );
 }
+

@@ -1,239 +1,296 @@
-'use client'
+'use client';
 
-import { useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { Suspense, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  GitCompareArrows,
+  ImagePlus,
+  Loader2,
+  Sparkles,
+  X,
+} from 'lucide-react';
+import { SiteHeader } from '@/components/SiteHeader';
+import { SiteFooter } from '@/components/SiteFooter';
+import type { CityComparison } from '@/lib/types';
 
-type AiAnalysis = {
-  problem_type: string
-  severity: string
-  description: string
-  tags: string[]
-  confidence: number
-  is_infrastructure: boolean
-}
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
-type Priority = 'low' | 'medium' | 'high'
+function CompareContent() {
+  const searchParams = useSearchParams();
+  const initialCode = searchParams.get('kod') ?? '';
 
-const CATEGORIES = [
-  { id: 'yol', label: 'Yol', icon: '🛣️' },
-  { id: 'isiq', label: 'İşıq', icon: '💡' },
-  { id: 'zibil', label: 'Təmizlik', icon: '🗑️' },
-  { id: 'su', label: 'Su/Kanalizasiya', icon: '💧' },
-  { id: 'yasilliq', label: 'Yaşıllıq', icon: '🌳' },
-  { id: 'diger', label: 'Digər', icon: '📋' },
-]
 
-export default function MuracietPage() {
-  const [files, setFiles] = useState<File[]>([])
-  const [previews, setPreviews] = useState<string[]>([])
-  const [analysis, setAnalysis] = useState<AiAnalysis | null>(null)
-  const [analyzing, setAnalyzing] = useState(false)
-  const [category, setCategory] = useState('')
-  const [description, setDescription] = useState('')
-  const [priority, setPriority] = useState<Priority>('medium')
-  const [location, setLocation] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [trackingCode, setTrackingCode] = useState('')
-  const [dragOver, setDragOver] = useState(false)
+  const [beforeFile, setBeforeFile] = useState<File | null>(null);
+  const [afterFile, setAfterFile] = useState<File | null>(null);
+  const [beforePreview, setBeforePreview] = useState('');
+  const [afterPreview, setAfterPreview] = useState('');
 
-  const handleFiles = useCallback(async (newFiles: FileList | File[]) => {
-    const arr = Array.from(newFiles).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'))
-    if (!arr.length) return
-    setFiles(prev => [...prev, ...arr])
-    const newPreviews = await Promise.all(
-      arr.map(f => new Promise<string>(res => {
-        const r = new FileReader()
-        r.onload = e => res(e.target?.result as string)
-        r.readAsDataURL(f)
-      }))
-    )
-    setPreviews(prev => [...prev, ...newPreviews])
-    const imageFile = arr.find(f => f.type.startsWith('image/'))
-    if (imageFile) {
-      setAnalyzing(true)
-      setAnalysis(null)
-      try {
-        const fd = new FormData()
-        fd.append('file', imageFile)
-        const res = await fetch('/api/analyze', { method: 'POST', body: fd })
-        const data = await res.json()
-        if (data.success) setAnalysis(data.analysis)
-      } catch (e) {
-        console.error(e)
-      } finally {
-        setAnalyzing(false)
-      }
+  const [comparing, setComparing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [result, setResult] = useState<CityComparison | null>(null);
+
+  const handleFile = (file: File, side: 'before' | 'after') => {
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      setErrorMsg('JPEG, PNG, WEBP, HEIC və ya HEIF şəkli seçin.');
+      return;
     }
-  }, [])
+    if (file.size <= 0 || file.size > MAX_IMAGE_SIZE) {
+      setErrorMsg('Şəklin ölçüsü 10 MB-dan çox olmamalıdır.');
+      return;
+    }
+    setErrorMsg('');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = (e.target?.result as string) || '';
+      if (side === 'before') {
+        setBeforeFile(file);
+        setBeforePreview(src);
+      } else {
+        setAfterFile(file);
+        setAfterPreview(src);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
-  const getLocation = () => {
-    navigator.geolocation?.getCurrentPosition(
-      pos => setLocation(`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`),
-      () => setLocation('Bakı, Azərbaycan')
-    )
-  }
+  const clearSide = (side: 'before' | 'after') => {
+    if (side === 'before') {
+      setBeforeFile(null);
+      setBeforePreview('');
+    } else {
+      setAfterFile(null);
+      setAfterPreview('');
+    }
+  };
 
-  const handleSubmit = async () => {
-    if (!category) return alert('Kateqoriya seçin')
-    setSubmitting(true)
+  const runComparison = async () => {
+    if (!beforeFile || !afterFile) return;
+    setComparing(true);
+    setErrorMsg('');
+    setResult(null);
+
     try {
-      const mediaUrls: string[] = []
-      for (const file of files) {
-        const ext = file.name.split('.').pop()
-        const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-        const { error } = await supabase.storage.from('muraciet-media').upload(path, file)
-        if (!error) mediaUrls.push(path)
-      }
-      const res = await fetch('/api/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, description, priority, location, analysis: analysis || null, mediaUrls }),
-      })
-      const data = await res.json()
-      if (data.success) setTrackingCode(data.tracking_code)
-      else alert(data.error || 'Xəta baş verdi')
-    } catch (e) {
-      console.error(e)
-      alert('Xəta baş verdi')
-    } finally {
-      setSubmitting(false)
-    }
-  }
+      const fd = new FormData();
+      fd.append('before', beforeFile);
+      fd.append('after', afterFile);
+      const res = await fetch('/api/compare', { method: 'POST', body: fd });
+      const data = (await res.json()) as {
+        success?: boolean;
+        result?: CityComparison;
+        error?: string;
+      };
 
-  if (trackingCode) {
-    return (
-      <main className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-6">
-        <div className="text-center max-w-md">
-          <div className="w-20 h-20 rounded-full border-2 border-[#00d4aa] bg-[#00d4aa]/10 flex items-center justify-center text-4xl mx-auto mb-6">✓</div>
-          <h1 className="text-2xl font-bold text-white mb-3">Müraciət qəbul edildi!</h1>
-          <p className="text-gray-400 mb-6 leading-relaxed">AI sistemi müraciətinizi analiz edir. Nəticə haqqında bildiriş alacaqsınız.</p>
-          <div className="bg-[#111827] border border-white/10 rounded-xl p-4 mb-4">
-            <p className="text-gray-400 text-sm mb-1">İzləmə kodu</p>
-            <p className="text-[#00d4aa] font-bold text-xl font-mono">{trackingCode}</p>
-          </div>
-          <a href={`/izle?kod=${trackingCode}`}
-            className="inline-block px-6 py-3 rounded-xl border border-[#00d4aa]/30 text-[#00d4aa] text-sm hover:bg-[#00d4aa]/10 transition-colors">
-            Müraciəti izlə →
-          </a>
-        </div>
-      </main>
-    )
-  }
+      if (!res.ok || !data.success || !data.result) {
+        setErrorMsg(data.error || 'Müqayisə zamanı xəta baş verdi.');
+        return;
+      }
+
+      setResult(data.result);
+    } catch {
+      setErrorMsg('Server ilə əlaqə qurmaq alınmadı.');
+    } finally {
+      setComparing(false);
+    }
+  };
 
   return (
-    <main className="min-h-screen bg-[#0a0f1e] text-white">
-      <div className="fixed inset-0 opacity-[0.03] pointer-events-none"
-        style={{ backgroundImage: 'linear-gradient(#00d4aa 1px,transparent 1px),linear-gradient(90deg,#00d4aa 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
-      <div className="relative z-10 max-w-2xl mx-auto px-4 py-10 pb-20">
-        <header className="flex items-center gap-4 mb-10">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00d4aa] to-[#4f8cff] flex items-center justify-center font-bold text-[#0a0f1e] text-lg">AI</div>
-          <div>
-            <h1 className="text-xl font-bold">CityAI</h1>
-            <p className="text-sm text-gray-500">İnfrastruktur problemlərini bildirin</p>
-          </div>
-        </header>
+    <main className="mx-auto w-full max-w-[1040px] flex-1 px-4 py-10 sm:px-6 lg:px-8">
+      <div className="border-b border-[#E2E8E8] pb-6">
+        <p className="text-sm font-semibold text-[#087F70]">Vizual həll yoxlaması</p>
+        <h1 className="font-display mt-1.5 text-3xl font-bold tracking-[-0.025em] text-[#102A35] sm:text-4xl">
+          Əvvəl və Sonra müqayisəsi
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#475569] sm:text-base">
+          İlkin problem fotosunu icradan sonrakı foto ilə müqayisə edin. Süni intellekt
+          şəkillərin eyni məkan olub-olmadığını və görünən dəyişiklikləri ilkin qiymətləndirir.
+        </p>
+      </div>
 
-        <div className="bg-[#111827] border border-white/07 rounded-2xl p-6 mb-4">
-          <p className="text-xs font-semibold tracking-widest text-gray-500 uppercase mb-4">Şəkil / Video</p>
-          <div
-            className={`border-dashed border-2 rounded-xl p-8 text-center cursor-pointer transition-all relative ${dragOver ? 'border-[#00d4aa] bg-[#00d4aa]/06' : 'border-[#00d4aa]/25 hover:border-[#00d4aa]/50'}`}
-            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={e => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files) }}
-          >
-            <input type="file" multiple accept="image/*,video/*" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              onChange={e => e.target.files && handleFiles(e.target.files)} />
-            <div className="w-11 h-11 rounded-xl bg-[#00d4aa]/10 border border-[#00d4aa]/20 flex items-center justify-center text-xl mx-auto mb-3">📎</div>
-            <p className="font-semibold text-sm mb-1">Fayl əlavə edin</p>
-            <p className="text-xs text-gray-500">Şəkil və ya video — drag & drop və ya klikləyin</p>
-          </div>
-          {previews.length > 0 && (
-            <div className="grid grid-cols-5 gap-2 mt-4">
-              {previews.map((p, i) => (
-                <div key={i} className="aspect-square rounded-lg overflow-hidden bg-[#1a2235] border border-white/07 relative group">
-                  <img src={p} alt="" className="w-full h-full object-cover" />
-                  <button className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    onClick={() => { setFiles(prev => prev.filter((_, j) => j !== i)); setPreviews(prev => prev.filter((_, j) => j !== i)) }}>×</button>
-                </div>
-              ))}
-            </div>
-          )}
-          {(analyzing || analysis) && (
-            <div className="mt-4 border-t border-white/07 pt-4">
-              <div className="bg-gradient-to-r from-[#00d4aa]/05 to-[#4f8cff]/05 border border-[#00d4aa]/15 rounded-xl p-4 flex gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00d4aa] to-[#4f8cff] flex items-center justify-center text-sm flex-shrink-0">🤖</div>
-                <div>
-                  <p className="text-[#00d4aa] text-sm font-semibold mb-1">AI Analizi</p>
-                  {analyzing ? <p className="text-gray-400 text-sm animate-pulse">Şəkil analiz edilir...</p> : analysis ? (
-                    <>
-                      <p className="text-gray-300 text-sm leading-relaxed">{analysis.description}</p>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {analysis.tags?.map((t, i) => (
-                          <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-[#00d4aa]/10 text-[#00d4aa] border border-[#00d4aa]/20">{t}</span>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-                </div>
+      <p className="mt-6 rounded-xl border border-[#E2E8E8] bg-white/80 p-4 text-sm text-[#475569]">
+        Müraciət statusunu yalnız təsdiqlənmiş operator dəyişə bilər. {initialCode ? <>Bu səhifəni <Link href={`/izle?kod=${encodeURIComponent(initialCode)}`} className="font-semibold text-[#087F70] hover:underline">#{initialCode} izləmə səhifəsindən</Link> açdınız.</> : null}
+      </p>
+
+      {/* Two-Column Dropzones */}
+      <section className="mt-6 grid gap-5 md:grid-cols-2">
+        {(
+          [
+            {
+              side: 'before' as const,
+              title: 'Əvvəlki vəziyyət',
+              subtitle: 'Problemin ilkin fotoşəkli',
+              preview: beforePreview,
+            },
+            {
+              side: 'after' as const,
+              title: 'Sonrakı vəziyyət',
+              subtitle: 'Təmirdən və ya bərpadan sonrakı fotoşəkil',
+              preview: afterPreview,
+            },
+          ] as const
+        ).map(({ side, title, subtitle, preview }) => (
+          <div key={side} className="civic-surface rounded-[14px] p-5">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h2 className="font-display text-base font-semibold text-[#102A35]">{title}</h2>
+                <p className="text-xs text-[#64748B]">{subtitle}</p>
               </div>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-[#111827] border border-white/07 rounded-2xl p-6 mb-4">
-          <p className="text-xs font-semibold tracking-widest text-gray-500 uppercase mb-4">Problem növü</p>
-          <div className="grid grid-cols-3 gap-2">
-            {CATEGORIES.map(c => (
-              <button key={c.id} onClick={() => setCategory(c.id)}
-                className={`p-3 rounded-xl border text-sm flex flex-col items-center gap-1.5 transition-all ${category === c.id ? 'border-[#00d4aa] text-[#00d4aa] bg-[#00d4aa]/07' : 'border-white/07 text-gray-400 hover:border-white/18 hover:text-white'}`}>
-                <span className="text-xl">{c.icon}</span>{c.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-[#111827] border border-white/07 rounded-2xl p-6 mb-4">
-          <div className="mb-5">
-            <label className="text-xs font-semibold tracking-widest text-gray-500 uppercase block mb-3">Təsvir</label>
-            <textarea rows={4} value={description} onChange={e => setDescription(e.target.value)} maxLength={500}
-              placeholder="Problemi ətraflı təsvir edin..."
-              className="w-full bg-[#1a2235] border border-white/07 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-[#00d4aa]/40 resize-none transition-colors" />
-            <p className="text-right text-xs text-gray-600 mt-1">{description.length} / 500</p>
-          </div>
-          <div>
-            <label className="text-xs font-semibold tracking-widest text-gray-500 uppercase block mb-3">Təcililik</label>
-            <div className="flex gap-2">
-              {[
-                { val: 'low' as Priority, label: '🟢 Aşağı', cls: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/07' },
-                { val: 'medium' as Priority, label: '🟡 Orta', cls: 'border-amber-500/40 text-amber-400 bg-amber-500/07' },
-                { val: 'high' as Priority, label: '🔴 Yüksək', cls: 'border-red-500/40 text-red-400 bg-red-500/07' },
-              ].map(p => (
-                <button key={p.val} onClick={() => setPriority(p.val)}
-                  className={`flex-1 py-2.5 rounded-xl border text-sm transition-all ${priority === p.val ? p.cls : 'border-white/07 text-gray-500 hover:border-white/15'}`}>
-                  {p.label}
+              {preview && (
+                <button
+                  type="button"
+                  onClick={() => clearSide(side)}
+                  className="inline-flex h-8 items-center gap-1 rounded-md border border-[#E2E8E8] px-2.5 text-xs font-medium text-[#475569] hover:bg-[#F1F5F5]"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Sil</span>
                 </button>
-              ))}
+              )}
             </div>
-          </div>
-        </div>
 
-        <div className="bg-[#111827] border border-white/07 rounded-2xl p-6 mb-6">
-          <p className="text-xs font-semibold tracking-widest text-gray-500 uppercase mb-3">Yer / Ünvan</p>
-          <div className="flex gap-2">
-            <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="Küçə, bina nömrəsi, rayon..."
-              className="flex-1 bg-[#1a2235] border border-white/07 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none focus:border-[#4f8cff]/40 transition-colors" />
-            <button onClick={getLocation}
-              className="px-4 rounded-xl border border-[#4f8cff]/20 bg-[#4f8cff]/10 text-[#4f8cff] text-sm hover:bg-[#4f8cff]/18 transition-colors whitespace-nowrap">
-              📍 GPS
-            </button>
+            {preview ? (
+              <div className="relative mt-4 aspect-[4/3] overflow-hidden rounded-[10px] border border-[#E2E8E8] bg-[#F2F4F6]">
+                <Image
+                  src={preview}
+                  alt={title}
+                  fill
+                  referrerPolicy="no-referrer"
+                  className="object-cover"
+                />
+              </div>
+            ) : (
+              <label className="mt-4 flex aspect-[4/3] cursor-pointer flex-col items-center justify-center rounded-[10px] border-[1.5px] border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-6 text-center transition-colors hover:border-[#087F70]">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0], side)}
+                />
+                <div className="grid h-11 w-11 place-items-center rounded-xl border border-[#E2E8E8] bg-white text-[#087F70]">
+                  <ImagePlus className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <span className="mt-3 text-sm font-semibold text-[#102A35]">Şəkil seçin</span>
+                <span className="mt-1 text-xs text-[#64748B]">JPEG, PNG, WEBP, HEIC, HEIF · maks. 10 MB</span>
+              </label>
+            )}
           </div>
-        </div>
+        ))}
+      </section>
 
-        <button onClick={handleSubmit} disabled={submitting || !category}
-          className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00d4aa] to-[#00b894] text-[#0a0f1e] font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-[#00d4aa]/20 hover:-translate-y-0.5 transition-all">
-          {submitting ? '⏳ Göndərilir...' : 'Müraciəti göndər →'}
+      {errorMsg && (
+        <div
+          role="alert"
+          className="mt-5 flex items-start gap-2.5 rounded-[12px] border border-[#DC2626]/30 bg-[#FEE2E2] p-4 text-sm text-[#991B1B]"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => void runComparison()}
+          disabled={comparing || !beforeFile || !afterFile}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#087F70] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#06695E] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {comparing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <span>AI müqayisə aparır...</span>
+            </>
+          ) : (
+            <>
+              <GitCompareArrows className="h-4 w-4" aria-hidden="true" />
+              <span>Vizual uyğunluğu yoxla</span>
+            </>
+          )}
         </button>
       </div>
+
+      {/* Comparison Verdict */}
+      {result && (
+        <section className="civic-surface mt-6 rounded-[14px] p-6">
+          <div
+            className={`flex items-start gap-3 rounded-[12px] border p-4 ${
+              result.is_resolved
+                ? 'border-[#087F70]/30 bg-[#E6F5F1]'
+                : 'border-[#D97706]/30 bg-[#FEF3C7]'
+            }`}
+          >
+            {result.is_resolved ? (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#087F70]" aria-hidden="true" />
+            ) : (
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[#B45309]" aria-hidden="true" />
+            )}
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#087F70]">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Süni intellekt müqayisə nəticəsi</span>
+              </div>
+              <h3 className="font-display mt-1 text-lg font-bold text-[#102A35]">
+                {result.is_resolved ? 'Problem həll edilib' : 'Problem tam həll edilməyib'}
+              </h3>
+              <p className="mt-1 text-sm leading-relaxed text-[#3E4946]">{result.summary}</p>
+            </div>
+          </div>
+
+          {result.warning && (
+            <div className="mt-4 flex items-start gap-2.5 rounded-[10px] border border-[#D97706]/30 bg-[#FEF3C7]/60 p-3.5 text-sm text-[#92400E]">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{result.warning}</span>
+            </div>
+          )}
+
+          <div className="mt-5 grid grid-cols-3 divide-x divide-[#E2E8E8] rounded-xl border border-[#E2E8E8] bg-[#F7F9FB] py-4 text-center">
+            <div className="px-3">
+              <p className="text-xs font-medium text-[#64748B]">Həll balı</p>
+              <p className="font-display font-mono-tabular mt-1 text-2xl font-bold text-[#102A35]">
+                {result.resolution_score}/100
+              </p>
+            </div>
+            <div className="px-3">
+              <p className="text-xs font-medium text-[#64748B]">Etibarlılıq</p>
+              <p className="font-display font-mono-tabular mt-1 text-2xl font-bold text-[#102A35]">
+                {Math.round(result.confidence * 100)}%
+              </p>
+            </div>
+            <div className="px-3">
+              <p className="text-xs font-medium text-[#64748B]">Eyni məkan</p>
+              <p
+                className={`font-display mt-1 text-2xl font-bold ${
+                  result.is_same_location ? 'text-[#087F70]' : 'text-[#DC2626]'
+                }`}
+              >
+                {result.is_same_location ? 'Bəli' : 'Xeyr'}
+              </p>
+            </div>
+          </div>
+
+        </section>
+      )}
     </main>
-  )
+  );
+}
+
+export default function MuqayisePage() {
+  return (
+    <div className="site-page flex min-h-screen flex-col text-[#102A35]">
+      <SiteHeader />
+      <Suspense
+        fallback={
+          <main className="mx-auto w-full max-w-[1040px] flex-1 px-4 py-10">
+            <div className="h-48 animate-pulse rounded-[14px] border border-[#E2E8E8] bg-white" />
+          </main>
+        }
+      >
+        <CompareContent />
+      </Suspense>
+      <SiteFooter />
+    </div>
+  );
 }

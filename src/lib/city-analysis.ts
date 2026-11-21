@@ -1,10 +1,12 @@
 export type CityAnalysis = {
   problem_type: string
+  category_id: 'yol' | 'isiq' | 'zibil' | 'su' | 'yasilliq' | 'diger'
   severity: 'low' | 'medium' | 'high' | 'critical'
   description: string
   tags: string[]
   confidence: number
   is_infrastructure: boolean
+  recommended_department: string
 }
 
 export type CityComparison = {
@@ -33,18 +35,21 @@ export class CityAnalysisError extends Error {
 }
 
 const allowedSeverities = new Set<CityAnalysis['severity']>(['low', 'medium', 'high', 'critical'])
+const allowedCategories = new Set<CityAnalysis['category_id']>(['yol', 'isiq', 'zibil', 'su', 'yasilliq', 'diger'])
 
 const analysisSchema = {
   type: 'object',
   properties: {
     problem_type: { type: 'string', description: 'Şəkildəki şəhər problemi növü.' },
+    category_id: { type: 'string', enum: ['yol', 'isiq', 'zibil', 'su', 'yasilliq', 'diger'] },
     severity: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
     description: { type: 'string', description: 'Azərbaycan dilində 1-2 cümləlik faktiki təsvir.' },
     tags: { type: 'array', items: { type: 'string' } },
     confidence: { type: 'number', minimum: 0, maximum: 1 },
     is_infrastructure: { type: 'boolean' },
+    recommended_department: { type: 'string', description: 'Azərbaycanda məsul ola biləcək qurumun adı.' },
   },
-  required: ['problem_type', 'severity', 'description', 'tags', 'confidence', 'is_infrastructure'],
+  required: ['problem_type', 'category_id', 'severity', 'description', 'tags', 'confidence', 'is_infrastructure', 'recommended_department'],
 } as const
 
 const comparisonSchema = {
@@ -78,21 +83,30 @@ function parseAnalysis(text: string): CityAnalysis {
 
   if (
     typeof raw.problem_type !== 'string' ||
+    raw.problem_type.trim().length > 120 ||
+    typeof raw.category_id !== 'string' ||
+    !allowedCategories.has(raw.category_id as CityAnalysis['category_id']) ||
     !allowedSeverities.has(severity as CityAnalysis['severity']) ||
     typeof raw.description !== 'string' ||
+    raw.description.trim().length > 1000 ||
+    tags.some((tag) => tag.length > 48) ||
     !Number.isFinite(confidence) ||
-    typeof raw.is_infrastructure !== 'boolean'
+    typeof raw.is_infrastructure !== 'boolean' ||
+    typeof raw.recommended_department !== 'string' ||
+    raw.recommended_department.trim().length > 160
   ) {
     throw new CityAnalysisError('Gemini analizi gözlənilən sahələri qaytarmadı.', 502, 'INVALID_RESPONSE')
   }
 
   return {
     problem_type: raw.problem_type.trim(),
+    category_id: raw.category_id as CityAnalysis['category_id'],
     severity: severity as CityAnalysis['severity'],
     description: raw.description.trim(),
     tags: tags.slice(0, 6),
     confidence: Math.max(0, Math.min(1, confidence)),
     is_infrastructure: raw.is_infrastructure,
+    recommended_department: raw.recommended_department.trim(),
   }
 }
 
@@ -107,6 +121,7 @@ function parseComparison(text: string): CityComparison {
     !Number.isFinite(confidence) ||
     !Number.isFinite(score) ||
     typeof raw.summary !== 'string' ||
+    raw.summary.trim().length > 1000 ||
     (typeof raw.warning !== 'string' && raw.warning !== null)
   ) {
     throw new CityAnalysisError('Gemini müqayisəsi gözlənilən sahələri qaytarmadı.', 502, 'INVALID_RESPONSE')
@@ -118,13 +133,14 @@ function parseComparison(text: string): CityComparison {
     confidence: Math.max(0, Math.min(1, confidence)),
     resolution_score: Math.max(0, Math.min(100, Math.round(score))),
     summary: raw.summary.trim(),
-    warning: raw.warning,
+    warning: typeof raw.warning === 'string' ? raw.warning.slice(0, 500) : null,
   }
 }
 
 export function createCityAnalysisRequest(imageBase64: string, mimeType: string) {
   return {
-    model: process.env.GEMINI_MODEL || 'gemini-3.7-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    store: false,
     input: [
       {
         type: 'text',
@@ -138,6 +154,21 @@ Yalnız verilən şemaya uyğun Azərbaycan dilində JSON qaytar. Şəkildə inf
   }
 }
 
+export function createCityVideoAnalysisRequest(videoBase64: string, mimeType: string) {
+  return {
+    model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    store: false,
+    input: [
+      {
+        type: 'text',
+        text: `Sən Azərbaycan şəhər infrastrukturu üzrə video analiz edən sistemsən. Videonun bütün zaman ardıcıllığını və görünən məzmununu təhlil et; yalnız bir kadrdan nəticə çıxarma. Yol, küçə işıqlandırması, tullantı, su/kanalizasiya, yaşıllıq və digər şəhər infrastrukturu problemlərini müəyyən et. Yalnız verilmiş JSON sxeminə uyğun cavab ver. Problem görünmürsə is_infrastructure false yaz, əmin olmadığın məlumatı uydurma.`,
+      },
+      { type: 'video', data: videoBase64, mime_type: mimeType },
+    ],
+    response_format: { type: 'text', mime_type: 'application/json', schema: analysisSchema },
+  }
+}
+
 export function createCityComparisonRequest(
   beforeBase64: string,
   beforeMimeType: string,
@@ -145,11 +176,12 @@ export function createCityComparisonRequest(
   afterMimeType: string,
 ) {
   return {
-    model: process.env.GEMINI_MODEL || 'gemini-3.7-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    store: false,
     input: [
       {
         type: 'text',
-        text: 'Birinci şəkil ilkin şəhər problemidir, ikinci şəkil isə həll sonrası nəticədir. Eyni məkan və problemin həqiqətən aradan qaldırılıb-qaldırılmadığını qiymətləndir. Yalnız verilən şemaya uyğun Azərbaycan dilində JSON qaytar.',
+        text: 'Birinci şəkil ilkin şəhər problemidir, ikinci şəkil isə həllindən sonrakı vəziyyətdir. Eyni məkan olub-olmadığını və problemin görünən əlamətlərinin aradan qalxıb-qalxmadığını qiymətləndir. Yalnız verilən sxemə uyğun Azərbaycan dilində JSON qaytar.',
       },
       { type: 'image', data: beforeBase64, mime_type: beforeMimeType },
       { type: 'image', data: afterBase64, mime_type: afterMimeType },
@@ -162,10 +194,12 @@ async function requestGemini({
   apiKey,
   body,
   fetcher,
+  timeoutMs = 20_000,
 }: {
   apiKey?: string
   body: object
   fetcher: typeof fetch
+  timeoutMs?: number
 }): Promise<string> {
   if (!apiKey) {
     throw new CityAnalysisError('Gemini API açarı konfiqurasiya edilməyib.', 503, 'CONFIGURATION_ERROR')
@@ -175,11 +209,12 @@ async function requestGemini({
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   const payload = (await response.json().catch(() => ({}))) as GeminiResponse
 
   if (!response.ok) {
-    console.error('[CityAI Gemini] Provider request failed', { status: response.status, reason: payload.error?.message })
+    console.error('[CityAI Gemini] Provider request failed', { status: response.status })
     throw new CityAnalysisError('Şəkil analizi xidməti hazırda cavab vermir. Bir az sonra yenidən yoxlayın.', 502, 'PROVIDER_ERROR')
   }
   if (!payload.output_text) {
@@ -196,6 +231,20 @@ export async function analyzeCityImage({ apiKey, imageBase64, mimeType, fetcher 
   fetcher?: typeof fetch
 }): Promise<CityAnalysis> {
   return parseAnalysis(await requestGemini({ apiKey, body: createCityAnalysisRequest(imageBase64, mimeType), fetcher }))
+}
+
+export async function analyzeCityVideo({ apiKey, videoBase64, mimeType, fetcher = fetch }: {
+  apiKey?: string
+  videoBase64: string
+  mimeType: string
+  fetcher?: typeof fetch
+}): Promise<CityAnalysis> {
+  return parseAnalysis(await requestGemini({
+    apiKey,
+    body: createCityVideoAnalysisRequest(videoBase64, mimeType),
+    fetcher,
+    timeoutMs: 50_000,
+  }))
 }
 
 export async function compareCityImages({
