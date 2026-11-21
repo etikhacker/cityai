@@ -17,10 +17,10 @@ const CAPABILITIES = [
   {
     number: '01',
     icon: Camera,
-    title: 'Şəkildən avtomatik problem təsnifatı',
+    title: 'Media əsasında problem təsnifatı',
     description:
-      'Yol, küçə işıqlandırması, təmizlik, su sızması və yaşıllıq problemlərini foto sübut əsasında dərhal ayırd edir.',
-    outcome: 'Dəqiq texniki təsvir və açar sözlər saniyələr ərzində formalaşır.',
+      'Yol, küçə işıqlandırması, təmizlik, su sızması və yaşıllıq problemləri üçün foto və video əsasında ilkin təsnifat təklif edir.',
+    outcome: 'Təsviri və açar sözləri müraciətdən əvvəl nəzərdən keçirib düzəldə bilərsiniz.',
   },
   {
     number: '02',
@@ -28,14 +28,14 @@ const CAPABILITIES = [
     title: 'Süni intellekt təklifi, vətəndaş təsdiqi',
     description:
       'AI yalnız ilkin təhlil təqdim edir; kateqoriya, təcililik və ünvan məlumatlarını göndərməzdən əvvəl istədiyiniz kimi dəyişə bilərsiniz.',
-    outcome: 'Yanlış yönləndirmə azalır, məsul qurum ilk addımda düzgün seçilir.',
+    outcome: 'Müraciətin aid ola biləcəyi qurum barədə təklifi əvvəlcədən görürsünüz.',
   },
   {
     number: '03',
     icon: Route,
     title: 'Şəffaf mərhələli izləmə xətti',
     description:
-      'Hər müraciətə unikal AZ-XXXX-X kodu verilir. Qəbul, baxış, icra və həll mərhələləri tarixçə ilə izlənilir.',
+      'Hər müraciətə verilən izləmə kodu ilə qəbul, baxış, icra və həll mərhələlərinin tarixçəsini yoxlamaq mümkündür.',
     outcome: 'Vətəndaş müraciətin hansı qurumda və nə vaxtdan baxıldığını görür.',
   },
   {
@@ -44,16 +44,16 @@ const CAPABILITIES = [
     title: 'Əvvəl və sonra vizual həll təsdiqi',
     description:
       'İcra tamamlandıqdan sonra ərazinin sonrakı fotosu ilkin foto ilə müqayisə edilərək eyni məkan və həll keyfiyyəti yoxlanılır.',
-    outcome: 'Formal bağlanmaların qarşısı alınır, real bərpa təsdiqlənir.',
+    outcome: 'Müqayisə aləti əvvəl və sonra materiallarını nəzərdən keçirməyə kömək edir.',
   },
 ];
 
 const PROCESS_STEPS = [
   {
     step: '01',
-    title: 'Şəkil əlavə edin və ya problemi qeyd edin',
+    title: 'Şəkil və ya video əlavə edin',
     detail:
-      'Çəkdiyiniz fotoşəkli yükləyin (JPEG, PNG, WEBP). İstəsəniz GPS ilə mövcud ünvanı avtomatik əlavə edə bilərsiniz.',
+      'Foto (JPEG, PNG, WEBP, HEIC, HEIF) və ya video (MP4, WEBM, MOV) əlavə edin. GPS ilə cari koordinatları daxil edə bilərsiniz.',
   },
   {
     step: '02',
@@ -81,16 +81,17 @@ export default function HomePage() {
             <div className="grid items-stretch gap-10 lg:grid-cols-12 lg:gap-12">
               <div className="flex flex-col justify-between lg:col-span-7">
                 <div>
-                  <p className="text-sm font-medium text-[#087F70]">
-                    Şəhər infrastrukturu üçün rəqəmsal müraciət sistemi
+                  <p className="inline-flex items-center gap-2 rounded-full border border-[#E2E8E8] bg-white/90 px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-[#07564F] shadow-sm sm:text-sm">
+                    <span className="h-2 w-2 rounded-full bg-[#087F70]" aria-hidden="true" />
+                    Ağıllı şəhər üçün açıq müraciət platforması
                   </p>
                   <h1 className="motion-heading font-display mt-4 max-w-2xl text-balance text-[clamp(2.25rem,4vw,3.5rem)] font-bold leading-[1.12] tracking-[-0.03em] text-[#102A35]">
-                    Şəhərdəki problemi görünən edin.
+                    Şəhərinizdəki problemi bildirin.{' '}
+                    <span className="text-[#087F70]">Dəyişikliyin bir hissəsi olun.</span>
                   </h1>
                   <p className="mt-5 max-w-xl text-base leading-relaxed text-[#475569] sm:text-lg">
-                    CityAI yol, işıqlandırma, su və təmizlik problemlərini şəkildən təhlil
-                    etməyə, düzgün quruma yönləndirməyə və müraciətin həllini sonadək izləməyə
-                    imkan verir.
+                    CityAI şəhər problemlərini foto və ya video ilə bildirməyə, ilkin AI təklifini
+                    nəzərdən keçirməyə və müraciətin gedişini izləmə kodu ilə yoxlamağa imkan verir.
                   </p>
 
                   <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -109,6 +110,11 @@ export default function HomePage() {
                       <span>Müraciəti izlə</span>
                     </Link>
                   </div>
+                  <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-[#64748B] sm:text-sm">
+                    <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#087F70]" aria-hidden="true" /> İzləmə kodu ilə şəxsi status</span>
+                    <span className="inline-flex items-center gap-2"><Camera className="h-4 w-4 text-[#087F70]" aria-hidden="true" /> Foto və video</span>
+                    <span className="inline-flex items-center gap-2"><Route className="h-4 w-4 text-[#087F70]" aria-hidden="true" /> Şəffaf mərhələlər</span>
+                  </div>
                 </div>
 
                 <div className="mt-8 flex items-start gap-2.5 border-t border-[#E2E8E8] pt-5 text-xs leading-relaxed text-[#64748B]">
@@ -117,7 +123,7 @@ export default function HomePage() {
                     aria-hidden="true"
                   />
                   <span>
-                    Şəkil analizi müraciəti sürətləndirmək üçün ilkin təklif yaradır; yekun
+                    AI media analizi müraciət üçün ilkin təklif yaradır; yekun
                     kateqoriya və təsviri göndərməzdən əvvəl siz təsdiqləyirsiniz.
                   </span>
                 </div>
@@ -140,10 +146,10 @@ export default function HomePage() {
               </div>
               <div className="pb-4 sm:px-6 sm:pb-0">
                 <p className="font-display tabular-nums text-2xl font-bold tracking-[-0.02em] text-[#102A35]">
-                  &lt; 4 san
+                  AI media təhlili
                 </p>
                 <p className="mt-1 text-sm text-[#64748B]">
-                  Orta ilkin AI foto təhlil müddəti
+                  Dəstəklənən media üçün ilkin təsnifat təklifi
                 </p>
               </div>
               <div className="pt-4 sm:px-6 sm:pt-0">
@@ -281,7 +287,7 @@ export default function HomePage() {
               href="/izle"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#087F70] transition-colors hover:text-[#06695E]"
             >
-              <span>Kod ilə axtarış et</span>
+              <span>İzləmə kodu ilə axtar</span>
               <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
@@ -300,7 +306,7 @@ export default function HomePage() {
                 Məhəllənizdəki problemi bir dəqiqəyə bildirin.
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-[#3E4946]">
-                Şəkil əlavə edin, süni intellektin ilkin təhlilini yoxlayın və izləmə kodu ilə
+                Foto və ya video əlavə edin, süni intellektin ilkin təhlilini yoxlayın və izləmə kodu ilə
                 həll prosesini nəzarətdə saxlayın.
               </p>
             </div>
@@ -320,3 +326,4 @@ export default function HomePage() {
     </div>
   );
 }
+

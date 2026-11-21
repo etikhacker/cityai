@@ -8,10 +8,10 @@ import { ArrowRight, Menu, X } from 'lucide-react';
 
 const NAV_LINKS = [
   { href: '/', label: 'Ana səhifə' },
-  { href: '/#imkanlar', label: 'İmkanlar' },
   { href: '/#proses', label: 'Necə işləyir?' },
+  { href: '/muraciet', label: 'Müraciət et' },
   { href: '/izle', label: 'Müraciətimi izlə' },
-  { href: '/muqayise', label: 'Müqayisə' },
+  { href: '/haqqimizda', label: 'Haqqımızda' },
 ];
 
 export function SiteHeader() {
@@ -121,3 +121,4 @@ export function SiteHeader() {
     </header>
   );
 }
+
