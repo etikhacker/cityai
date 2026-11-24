@@ -21,7 +21,7 @@ import {
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
 import { CategoryIcon } from '@/components/StatusBadge';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import {
   CATEGORIES,
   PRIORITY_CONFIG,
@@ -245,7 +245,7 @@ export default function MuracietPage() {
         }
         for (const [index, file] of Array.from(files.entries())) {
           const signed = signingData.files[index];
-          const { error } = await supabase.storage.from('muraciet-media').uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type });
+          const { error } = await getSupabase().storage.from('muraciet-media').uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type });
           if (error) throw error;
           uploadedMedia.push({ path: signed.path, type: signed.type, size: signed.size, proof: signed.proof });
         }
