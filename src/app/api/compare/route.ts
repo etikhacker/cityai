@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     const [beforeBytes, afterBytes] = await Promise.all([beforeFile.arrayBuffer(), afterFile.arrayBuffer()]);
     const result = await compareCityImages({
       apiKey: process.env.GEMINI_API_KEY,
+      deepseekApiKey: process.env.DEEPSEEK_API_KEY,
       beforeBase64: Buffer.from(beforeBytes).toString('base64'), beforeMimeType: beforeFile.type,
       afterBase64: Buffer.from(afterBytes).toString('base64'), afterMimeType: afterFile.type,
     });

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { analyzeCityImage, analyzeCityVideo, compareCityImages, createCityAnalysisRequest, createCityVideoAnalysisRequest, CityAnalysisError } from './city-analysis'
+import { activeProvider, analyzeCityImage, analyzeCityVideo, compareCityImages, createCityAnalysisRequest, createCityVideoAnalysisRequest, CityAnalysisError } from './city-analysis'
 
 describe('CityAI Gemini image analysis', () => {
   it('keeps the API key out of the request body and sends it only as a server header', async () => {
@@ -23,6 +23,7 @@ describe('CityAI Gemini image analysis', () => {
       imageBase64: 'aW1hZ2U=',
       mimeType: 'image/jpeg',
       fetcher,
+      provider: 'gemini',
     })
 
     const [, init] = fetcher.mock.calls[0] as [string, RequestInit]
@@ -33,7 +34,7 @@ describe('CityAI Gemini image analysis', () => {
   })
 
   it('fails clearly when the server has no Gemini configuration', async () => {
-    await expect(analyzeCityImage({ imageBase64: 'aW1hZ2U=', mimeType: 'image/jpeg' })).rejects.toMatchObject({
+    await expect(analyzeCityImage({ imageBase64: 'aW1hZ2U=', mimeType: 'image/jpeg', provider: 'gemini' })).rejects.toMatchObject({
       code: 'CONFIGURATION_ERROR',
       status: 503,
     } satisfies Partial<CityAnalysisError>)
@@ -52,7 +53,7 @@ describe('CityAI Gemini image analysis', () => {
       is_infrastructure: true, recommended_department: 'Yol qurumu',
     }) }), { status: 200 }))
 
-    const result = await analyzeCityVideo({ apiKey: 'server-only-key', videoBase64: 'c3ludGhldGljLXZpZGVv', mimeType: 'video/mp4', fetcher })
+    const result = await analyzeCityVideo({ apiKey: 'server-only-key', videoBase64: 'c3ludGhldGljLXZpZGVv', mimeType: 'video/mp4', fetcher, provider: 'gemini' })
     const [, init] = fetcher.mock.calls[0] as [string, RequestInit]
     const body = JSON.parse(String(init.body))
     expect(body.input).toContainEqual(expect.objectContaining({ type: 'video', mime_type: 'video/mp4' }))
@@ -88,10 +89,72 @@ describe('CityAI Gemini image analysis', () => {
       afterBase64: 'YWZ0ZXI=',
       afterMimeType: 'image/png',
       fetcher,
+      provider: 'gemini',
     })
 
     const [, init] = fetcher.mock.calls[0] as [string, RequestInit]
     expect(String(init.body)).not.toContain('server-only-key')
     expect(result).toMatchObject({ is_resolved: true, resolution_score: 92 })
+  })
+})
+
+describe('CityAI DeepSeek provider', () => {
+  const analysisJson = JSON.stringify({
+    problem_type: 'Zibil yığımı',
+    category_id: 'zibil',
+    severity: 'medium',
+    description: 'Küçədə təmizlənməmiş zibil görünür.',
+    tags: ['zibil'],
+    confidence: 0.8,
+    is_infrastructure: true,
+    recommended_department: 'Təmizlik xidməti',
+  })
+
+  it('sends the image as a data URL with bearer auth and parses the chat completion', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ choices: [{ message: { content: analysisJson } }] }), { status: 200 }),
+    )
+
+    const result = await analyzeCityImage({
+      deepseekApiKey: 'ds-key',
+      imageBase64: 'aW1hZ2U=',
+      mimeType: 'image/png',
+      fetcher,
+      provider: 'deepseek',
+    })
+
+    const [url, init] = fetcher.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://api.deepseek.com/chat/completions')
+    expect(init.headers).toMatchObject({ Authorization: 'Bearer ds-key' })
+    const body = JSON.parse(String(init.body))
+    expect(body.response_format).toEqual({ type: 'json_object' })
+    expect(body.messages[1].content).toContainEqual({
+      type: 'image_url',
+      image_url: { url: 'data:image/png;base64,aW1hZ2U=' },
+    })
+    expect(result.category_id).toBe('zibil')
+  })
+
+  it('fails clearly when the DeepSeek key is missing', async () => {
+    await expect(analyzeCityImage({
+      imageBase64: 'aW1hZ2U=', mimeType: 'image/png', provider: 'deepseek',
+    })).rejects.toMatchObject({ code: 'CONFIGURATION_ERROR', status: 503 })
+  })
+
+  it('refuses video while the DeepSeek provider is active', async () => {
+    await expect(analyzeCityVideo({
+      videoBase64: 'dmlkZW8=', mimeType: 'video/mp4', provider: 'deepseek',
+    })).rejects.toMatchObject({ code: 'PROVIDER_ERROR' })
+  })
+
+  it('selects the provider from AI_PROVIDER and falls back to the available key', async () => {
+    vi.stubEnv('AI_PROVIDER', 'deepseek')
+    expect(activeProvider()).toBe('deepseek')
+    vi.stubEnv('AI_PROVIDER', '')
+    vi.stubEnv('DEEPSEEK_API_KEY', 'ds-key')
+    expect(activeProvider()).toBe('deepseek')
+    vi.stubEnv('DEEPSEEK_API_KEY', '')
+    expect(activeProvider()).toBe('gemini')
+    vi.unstubAllEnvs()
   })
 })

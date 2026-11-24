@@ -42,6 +42,30 @@ const DEFAULT_MODEL = 'gemini-3.8-flash'
 const DEFAULT_FALLBACK_MODEL = 'gemini-3.7-flash'
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions'
 
+const DEFAULT_DEEPSEEK_MODEL = 'deepseek-flash'
+const DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/chat/completions'
+
+export type Provider = 'gemini' | 'deepseek'
+
+/** AI_PROVIDER açıq verilirsə o qalır; əks halda DeepSeek açarı varsa DeepSeek seçilir. */
+export function activeProvider(): Provider {
+  const forced = process.env.AI_PROVIDER?.trim().toLowerCase()
+  if (forced === 'gemini' || forced === 'deepseek') return forced
+  return process.env.DEEPSEEK_API_KEY ? 'deepseek' : 'gemini'
+}
+
+const IMAGE_PROMPT = `Sən Azərbaycan şəhər infrastruktur problemlərini analiz edən peşəkar sistemsən.
+Şəkli diqqətlə yoxla. Yol, küçə işıqlandırması, zibil, su/kanalizasiya, yaşıllıq və ya digər şəhər infrastrukturu ilə bağlı problemi müəyyən et.
+Yalnız şemaya uyğun Azərbaycan dilində JSON qaytar. Şəkildə infrastruktur problemi yoxdursa, is_infrastructure false yaz və bunu təsvir et.`
+
+const VIDEO_PROMPT = `Sən Azərbaycan şəhər infrastrukturu üzrə video analiz edən sistemsən. Videonun bütün zaman ardıcıllığını və görünən məzmununu təhlil et; yalnız bir kadrdan nəticə çıxarma. Yol, küçə işıqlandırması, tullantı, su/kanalizasiya, yaşıllıq və digər şəhər infrastrukturu problemlərini müəyyən et. Yalnız verilmiş JSON sxeminə uyğun cavab ver. Problem görünmürsə is_infrastructure false yaz, əmin olmadığın məlumatı uydurma.`
+
+const COMPARISON_PROMPT = 'Birinci şəkil ilkin şəhər problemidir, ikinci şəkil isə həllindən sonrakı vəziyyətdir. Eyni məkan olub-olmadığını və problemin görünən əlamətlərinin aradan qalxıb-qalxmadığını qiymətləndir. Yalnız verilən sxemə uyğun Azərbaycan dilində JSON qaytar.'
+
+const ANALYSIS_HINT = 'Cavabı yalnız JSON obyekti kimi ver: {"problem_type":"string (maks 120 simvol)","category_id":"yol|isiq|zibil|su|yasilliq|diger","severity":"low|medium|high|critical","description":"Azərbaycan dilində 1-2 cümlə","tags":["string"],"confidence":0.0,"is_infrastructure":true,"recommended_department":"string"}'
+
+const COMPARISON_HINT = 'Cavabı yalnız JSON obyekti kimi ver: {"is_resolved":true,"is_same_location":true,"confidence":0.0,"resolution_score":0,"summary":"string","warning":null}'
+
 const analysisSchema = {
   type: 'object',
   properties: {
@@ -71,8 +95,9 @@ const comparisonSchema = {
 } as const
 
 function parseObject(text: string, errorMessage: string): Record<string, unknown> {
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
   try {
-    const value: unknown = JSON.parse(text)
+    const value: unknown = JSON.parse(cleaned)
     if (value && typeof value === 'object') return value as Record<string, unknown>
   } catch {
     // The public error below avoids returning raw provider text.
@@ -148,9 +173,7 @@ export function createCityAnalysisRequest(imageBase64: string, mimeType: string)
     input: [
       {
         type: 'text',
-        text: `Sən Azərbaycan şəhər infrastruktur problemlərini analiz edən peşəkar sistemsən.
-Şəkli diqqətlə yoxla. Yol, küçə işıqlandırması, zibil, su/kanalizasiya, yaşıllıq və ya digər şəhər infrastrukturu ilə bağlı problemi müəyyən et.
-Yalnız verilən şemaya uyğun Azərbaycan dilində JSON qaytar. Şəkildə infrastruktur problemi yoxdursa, is_infrastructure false yaz və bunu təsvir et.`,
+        text: IMAGE_PROMPT,
       },
       { type: 'image', data: imageBase64, mime_type: mimeType },
     ],
@@ -164,7 +187,7 @@ export function createCityVideoAnalysisRequest(videoBase64: string, mimeType: st
     input: [
       {
         type: 'text',
-        text: `Sən Azərbaycan şəhər infrastrukturu üzrə video analiz edən sistemsən. Videonun bütün zaman ardıcıllığını və görünən məzmununu təhlil et; yalnız bir kadrdan nəticə çıxarma. Yol, küçə işıqlandırması, tullantı, su/kanalizasiya, yaşıllıq və digər şəhər infrastrukturu problemlərini müəyyən et. Yalnız verilmiş JSON sxeminə uyğun cavab ver. Problem görünmürsə is_infrastructure false yaz, əmin olmadığın məlumatı uydurma.`,
+        text: VIDEO_PROMPT,
       },
       { type: 'video', data: videoBase64, mime_type: mimeType },
     ],
@@ -183,7 +206,7 @@ export function createCityComparisonRequest(
     input: [
       {
         type: 'text',
-        text: 'Birinci şəkil ilkin şəhər problemidir, ikinci şəkil isə həllindən sonrakı vəziyyətdir. Eyni məkan olub-olmadığını və problemin görünən əlamətlərinin aradan qalxıb-qalxmadığını qiymətləndir. Yalnız verilən sxemə uyğun Azərbaycan dilində JSON qaytar.',
+        text: COMPARISON_PROMPT,
       },
       { type: 'image', data: beforeBase64, mime_type: beforeMimeType },
       { type: 'image', data: afterBase64, mime_type: afterMimeType },
@@ -279,21 +302,136 @@ async function requestGemini({
   )
 }
 
-export async function analyzeCityImage({ apiKey, imageBase64, mimeType, fetcher = fetch }: {
+type DeepSeekImage = { base64: string; mimeType: string }
+
+function deepSeekMessages(prompt: string, hint: string, images: DeepSeekImage[], instruction: string) {
+  return [
+    { role: 'system', content: prompt + '\n' + hint },
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: instruction },
+        ...images.map((image) => ({
+          type: 'image_url',
+          image_url: { url: 'data:' + image.mimeType + ';base64,' + image.base64 },
+        })),
+      ],
+    },
+  ]
+}
+
+type DeepSeekResponse = {
+  choices?: Array<{ message?: { content?: string } }>
+  error?: { message?: string }
+}
+
+async function requestDeepSeek({
+  apiKey,
+  messages,
+  fetcher,
+  timeoutMs = 30_000,
+}: {
   apiKey?: string
+  messages: unknown[]
+  fetcher: typeof fetch
+  timeoutMs?: number
+}): Promise<string> {
+  if (!apiKey) {
+    throw new CityAnalysisError('DeepSeek API açarı konfiqurasiya edilməyib.', 503, 'CONFIGURATION_ERROR')
+  }
+
+  const model = process.env.DEEPSEEK_MODEL || DEFAULT_DEEPSEEK_MODEL
+  const attempts = 2
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await fetcher(DEEPSEEK_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+        body: JSON.stringify({ model, messages, response_format: { type: 'json_object' }, stream: false }),
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+      const payload = (await response.json().catch(() => ({}))) as DeepSeekResponse
+      const content = payload.choices?.[0]?.message?.content
+
+      if (response.ok && typeof content === 'string' && content.trim()) return content
+      if (response.ok) {
+        throw new CityAnalysisError('DeepSeek boş cavab qaytardı.', 502, 'INVALID_RESPONSE')
+      }
+
+      console.error('[CityAI DeepSeek] Provider request failed', {
+        model,
+        status: response.status,
+        message: payload.error?.message?.slice(0, 240) ?? null,
+      })
+
+      if (![408, 429, 500, 502, 503, 504].includes(response.status)) {
+        throw new CityAnalysisError('DeepSeek sorğunu qəbul etmədi. API konfiqurasiyasını yoxlamaq lazımdır.', 502, 'PROVIDER_ERROR')
+      }
+    } catch (error) {
+      if (error instanceof CityAnalysisError) throw error
+      console.error('[CityAI DeepSeek] Network request failed', {
+        model,
+        error: error instanceof Error ? error.name : 'UnknownError',
+      })
+    }
+
+    if (attempt + 1 < attempts) {
+      await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)))
+    }
+  }
+
+  throw new CityAnalysisError(
+    'AI analizi hazırda əlçatan deyil. Fayl müraciətə əlavə olunub; təsviri əl ilə daxil edə və ya bir az sonra yenidən cəhd edə bilərsiniz.',
+    503,
+    'PROVIDER_ERROR',
+  )
+}
+
+export async function analyzeCityImage({
+  apiKey,
+  deepseekApiKey,
+  imageBase64,
+  mimeType,
+  fetcher = fetch,
+  provider = activeProvider(),
+}: {
+  apiKey?: string
+  deepseekApiKey?: string
   imageBase64: string
   mimeType: string
   fetcher?: typeof fetch
+  provider?: Provider
 }): Promise<CityAnalysis> {
-  return parseAnalysis(await requestGemini({ apiKey, body: createCityAnalysisRequest(imageBase64, mimeType), fetcher }))
+  const text = provider === 'deepseek'
+    ? await requestDeepSeek({
+        apiKey: deepseekApiKey,
+        messages: deepSeekMessages(IMAGE_PROMPT, ANALYSIS_HINT, [{ base64: imageBase64, mimeType }], 'Şəkli analiz et və yalnız JSON qaytar.'),
+        fetcher,
+      })
+    : await requestGemini({ apiKey, body: createCityAnalysisRequest(imageBase64, mimeType), fetcher })
+
+  return parseAnalysis(text)
 }
 
-export async function analyzeCityVideo({ apiKey, videoBase64, mimeType, fetcher = fetch }: {
+export async function analyzeCityVideo({
+  apiKey,
+  videoBase64,
+  mimeType,
+  fetcher = fetch,
+  provider = activeProvider(),
+}: {
   apiKey?: string
   videoBase64: string
   mimeType: string
   fetcher?: typeof fetch
+  provider?: Provider
 }): Promise<CityAnalysis> {
+  // DeepSeek video qəbul etmir; video analizi müvəqqəti dayandırılıb.
+  if (provider === 'deepseek') {
+    throw new CityAnalysisError('Video analizi müvəqqəti dayandırılıb.', 503, 'PROVIDER_ERROR')
+  }
+
   return parseAnalysis(await requestGemini({
     apiKey,
     body: createCityVideoAnalysisRequest(videoBase64, mimeType),
@@ -305,22 +443,37 @@ export async function analyzeCityVideo({ apiKey, videoBase64, mimeType, fetcher 
 
 export async function compareCityImages({
   apiKey,
+  deepseekApiKey,
   beforeBase64,
   beforeMimeType,
   afterBase64,
   afterMimeType,
   fetcher = fetch,
+  provider = activeProvider(),
 }: {
   apiKey?: string
+  deepseekApiKey?: string
   beforeBase64: string
   beforeMimeType: string
   afterBase64: string
   afterMimeType: string
   fetcher?: typeof fetch
+  provider?: Provider
 }): Promise<CityComparison> {
-  return parseComparison(await requestGemini({
-    apiKey,
-    body: createCityComparisonRequest(beforeBase64, beforeMimeType, afterBase64, afterMimeType),
-    fetcher,
-  }))
+  const text = provider === 'deepseek'
+    ? await requestDeepSeek({
+        apiKey: deepseekApiKey,
+        messages: deepSeekMessages(COMPARISON_PROMPT, COMPARISON_HINT, [
+          { base64: beforeBase64, mimeType: beforeMimeType },
+          { base64: afterBase64, mimeType: afterMimeType },
+        ], 'Birinci şəkil əvvəlki, ikinci şəkil sonrakı vəziyyətdir. Yalnız JSON qaytar.'),
+        fetcher,
+      })
+    : await requestGemini({
+        apiKey,
+        body: createCityComparisonRequest(beforeBase64, beforeMimeType, afterBase64, afterMimeType),
+        fetcher,
+      })
+
+  return parseComparison(text)
 }

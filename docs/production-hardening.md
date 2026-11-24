@@ -13,6 +13,11 @@ Use Vercel project settings for production values; never commit them.
 | `CITYAI_ADMIN_PASSWORD` | Strong, unique operator password (12–256 characters). Login fails closed if it is absent or shorter than 12 characters. |
 | `GEMINI_API_KEY` | Server-only Gemini credential used by image/video analysis and comparison. |
 | `GEMINI_MODEL` | Optional server-side model identifier; default is `gemini-3.8-flash`. Only set a model confirmed to support the requested input types and free-tier use. |
+| `AI_PROVIDER` | Optional. `deepseek` or `gemini`. When unset, DeepSeek is used if `DEEPSEEK_API_KEY` exists, otherwise Gemini. |
+| `DEEPSEEK_API_KEY` | Server-only DeepSeek credential for image analysis and before/after comparison. |
+| `DEEPSEEK_MODEL` | Optional DeepSeek model id; default is `deepseek-flash`, the only current model that accepts image input. |
+
+Video analysis is currently disabled at the API layer (`VIDEO_ANALYSIS_DISABLED`): DeepSeek has no video input, so `/api/analyze` accepts images only and the UI no longer offers video for AI analysis. Re-enable it only together with a provider that accepts video.
 
 No Upstash/Redis service or additional rate-limit environment variables are needed. Shared rate limits use the existing Supabase Postgres project and `SUPABASE_SERVICE_ROLE_KEY`.
 

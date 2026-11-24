@@ -173,8 +173,7 @@ describe('security-sensitive API integrations', () => {
     expect(mocks.analyzeCityImage).toHaveBeenCalledWith(expect.objectContaining({ mimeType: 'image/png' }));
   });
 
-  it('passes video bytes as video content to the AI analysis service', async () => {
-    mocks.analyzeCityVideo.mockResolvedValue({ problem_type: 'Yol problemi', category_id: 'yol' });
+  it('rejects video uploads while video analysis is disabled', async () => {
     const mp4Header = new Uint8Array(16);
     mp4Header.set([0, 0, 0, 16, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
     const form = new FormData();
@@ -182,19 +181,10 @@ describe('security-sensitive API integrations', () => {
     const response = await analyzePost(new NextRequest('https://cityai.test/api/analyze', {
       method: 'POST', headers: { origin: 'https://cityai.test' }, body: form,
     }));
-    expect(response.status).toBe(200);
-    expect(mocks.analyzeCityVideo).toHaveBeenCalledWith(expect.objectContaining({ mimeType: 'video/mp4' }));
-    expect(mocks.analyzeCityImage).not.toHaveBeenCalled();
-  });
-
-  it('rejects a video whose bytes do not match its declared MIME type', async () => {
-    const form = new FormData();
-    form.set('file', new File([new Uint8Array([1, 2, 3, 4])], 'spoofed.mp4', { type: 'video/mp4' }));
-    const response = await analyzePost(new NextRequest('https://cityai.test/api/analyze', {
-      method: 'POST', headers: { origin: 'https://cityai.test' }, body: form,
-    }));
     expect(response.status).toBe(415);
+    expect(await response.json()).toMatchObject({ code: 'VIDEO_ANALYSIS_DISABLED' });
     expect(mocks.analyzeCityVideo).not.toHaveBeenCalled();
+    expect(mocks.analyzeCityImage).not.toHaveBeenCalled();
   });
 
   it('sets a protected admin cookie and requires it for the complaint queue', async () => {

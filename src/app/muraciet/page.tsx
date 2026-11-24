@@ -158,7 +158,7 @@ export default function MuracietPage() {
       setPreviews((prev) => [...prev, ...readPreviews].slice(0, 5));
 
       const mediaToAnalyze = [...files, ...addedFiles].find((file) =>
-        (IMAGE_TYPES.has(file.type) || VIDEO_TYPES.has(file.type)) && file.size <= MAX_AI_ANALYSIS_BYTES
+        IMAGE_TYPES.has(file.type) && file.size <= MAX_AI_ANALYSIS_BYTES
       );
       if (!analysis && mediaToAnalyze) {
         if (allowAiAnalysis) {
@@ -406,7 +406,7 @@ export default function MuracietPage() {
             İnfrastruktur problemini bildirin
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#475569] sm:text-base">
-            Şəkil və 3 MB-dan kiçik video süni intellektlə təhlil olunur. Daha böyük videolar müraciətə əlavə edilir, təsvir isə əl ilə yazılır.
+            3 MB-dan kiçik şəkillər süni intellektlə təhlil olunur. Videolar müraciətə əlavə edilir, təsvir isə əl ilə yazılır.
             Göndərməzdən əvvəl bütün sahələri redaktə edə bilərsiniz.
           </p>
         </div>
@@ -441,7 +441,7 @@ export default function MuracietPage() {
                       const accepted = event.target.checked;
                       setAllowAiAnalysis(accepted);
                       if (!accepted) return;
-                      const mediaFile = files.find((file) => (IMAGE_TYPES.has(file.type) || VIDEO_TYPES.has(file.type)) && file.size <= MAX_AI_ANALYSIS_BYTES);
+                      const mediaFile = files.find((file) => IMAGE_TYPES.has(file.type) && file.size <= MAX_AI_ANALYSIS_BYTES);
                       if (mediaFile && !analysis && !analyzing) void runAnalysis(mediaFile, category, description);
                     }}
                     className="mt-0.5 h-4 w-4 shrink-0 accent-[#087F70]"
@@ -483,7 +483,7 @@ export default function MuracietPage() {
                   Şəkil və ya videonu bura sürükləyin və ya cihazdan seçin
                 </p>
                 <p className="mt-1 text-xs text-[#64748B]">
-                  JPEG, PNG, WEBP, HEIC, HEIF, MP4, WEBM və MOV dəstəklənir. AI təhlili şəkil və ya videonun həqiqi məzmununu yoxlayır (maksimum 3 MB).
+                  JPEG, PNG, WEBP, HEIC, HEIF, MP4, WEBM və MOV dəstəklənir. AI təhlili yalnız 3 MB-dan kiçik şəkillər üçün mövcuddur; videonun təsvirini əl ilə yazın.
                 </p>
               </div>
 
@@ -545,7 +545,7 @@ export default function MuracietPage() {
                           <span>{analysisMediaKind === 'video' ? 'Videonun AI təhlili' : 'Süni intellekt tərəfindən ilkin təhlil'}</span>
                     </div>
 
-                    {analysis && files.some((file) => (analysisMediaKind === 'video' ? VIDEO_TYPES : IMAGE_TYPES).has(file.type) && file.size <= MAX_AI_ANALYSIS_BYTES) && (
+                    {analysis && files.some((file) => IMAGE_TYPES.has(file.type) && file.size <= MAX_AI_ANALYSIS_BYTES) && (
                       <div className="flex items-center gap-3">
                         <span className="font-mono-tabular text-xs font-semibold text-[#07564F]">
                           Etibarlılıq: {Math.round(analysis.confidence * 100)}%
@@ -553,7 +553,7 @@ export default function MuracietPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const mediaFile = files.find((file) => (analysisMediaKind === 'video' ? VIDEO_TYPES : IMAGE_TYPES).has(file.type) && file.size <= MAX_AI_ANALYSIS_BYTES);
+                            const mediaFile = files.find((file) => IMAGE_TYPES.has(file.type) && file.size <= MAX_AI_ANALYSIS_BYTES);
                             if (mediaFile) void runAnalysis(mediaFile, category, description);
                           }}
                           className="inline-flex items-center gap-1 text-xs font-medium text-[#087F70] hover:underline"
