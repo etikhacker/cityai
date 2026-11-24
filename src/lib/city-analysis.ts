@@ -37,6 +37,11 @@ export class CityAnalysisError extends Error {
 const allowedSeverities = new Set<CityAnalysis['severity']>(['low', 'medium', 'high', 'critical'])
 const allowedCategories = new Set<CityAnalysis['category_id']>(['yol', 'isiq', 'zibil', 'su', 'yasilliq', 'diger'])
 
+// Model seçimi və endpoint tək yerdə saxlanılır.
+const DEFAULT_MODEL = 'gemini-3.8-flash'
+const DEFAULT_FALLBACK_MODEL = 'gemini-3.7-flash'
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions'
+
 const analysisSchema = {
   type: 'object',
   properties: {
@@ -139,7 +144,6 @@ function parseComparison(text: string): CityComparison {
 
 export function createCityAnalysisRequest(imageBase64: string, mimeType: string) {
   return {
-    model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
     store: false,
     input: [
       {
@@ -156,7 +160,6 @@ Yalnız verilən şemaya uyğun Azərbaycan dilində JSON qaytar. Şəkildə inf
 
 export function createCityVideoAnalysisRequest(videoBase64: string, mimeType: string) {
   return {
-    model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
     store: false,
     input: [
       {
@@ -176,7 +179,6 @@ export function createCityComparisonRequest(
   afterMimeType: string,
 ) {
   return {
-    model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
     store: false,
     input: [
       {
@@ -207,20 +209,21 @@ async function requestGemini({
     throw new CityAnalysisError('Gemini API açarı konfiqurasiya edilməyib.', 503, 'CONFIGURATION_ERROR')
   }
 
-  const primaryModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
-  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.7-flash'
+  const primaryModel = process.env.GEMINI_MODEL || DEFAULT_MODEL
+  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || DEFAULT_FALLBACK_MODEL
   const models = allowFallback && fallbackModel !== primaryModel
     ? [primaryModel, fallbackModel]
     : [primaryModel]
   let lastProviderStatus = 502
 
-  for (const [modelIndex, model] of models.entries()) {
+  for (let modelIndex = 0; modelIndex < models.length; modelIndex += 1) {
+    const model = models[modelIndex]
     // Retry the primary model once for transient provider/network failures, then fail over.
     const attempts = modelIndex === 0 ? 2 : 1
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
         const requestBody = { ...body, model }
-        const response = await fetcher('https://generativelanguage.googleapis.com/v1beta/interactions', {
+        const response = await fetcher(GEMINI_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
           body: JSON.stringify(requestBody),
