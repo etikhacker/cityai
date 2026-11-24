@@ -1,85 +1,83 @@
-# 🏙️ CityAI
+# CityAI
 
-> AI-powered citizen complaint platform — residents report city issues (potholes, broken lights, garbage, etc.) with a photo, and AI classifies and routes the complaint automatically.
+CityAI şəhər infrastrukturu ilə bağlı problemləri (yol, işıqlandırma, su, təmizlik və digər mövzular) bildirmək və müraciətin gedişini izləmək üçün veb platformadır. Müraciətə şəkil və ya video əlavə edilə bilər; mövcud AI inteqrasiyası media materialını təhlil edib ilkin kateqoriya və təsvir təklif edir.
 
-🔗 **Live demo:** [cityai-asan.vercel.app](https://cityai-asan.vercel.app)
+**Canlı sayt:** [cityai-asan.vercel.app](https://cityai-asan.vercel.app)
 
-<!-- 📸 Add screenshots/GIF: complaint submission flow, GPS pin, admin dashboard -->
-<!-- ![screenshot](./docs/screenshot-1.png) -->
+## İmkanlar
 
----
+- Şəhər problemi barədə müraciət yaratmaq və media əlavə etmək
+- Mümkün olduqda məkan məlumatını daxil etmək
+- AI vasitəsilə ilkin analiz almaq və nəticəni istifadəçi tərəfindən yoxlamaq
+- İzləmə kodu ilə müraciətin statusuna baxmaq
+- Əvvəlki və sonrakı vəziyyətləri müqayisə etmək
+- Admin panelindən daxil olan müraciətləri idarə etmək
+- Azərbaycan dilində mobil uyğun interfeys
 
-## 🧩 Problem
+AI nəticəsi ilkin təklifdir; müraciətin yekun qiymətləndirilməsi məsul şəxslər tərəfindən aparılır.
 
-Built for the **ASAN AI Hub Challenge 2026** — cities need a low-friction way for citizens to report infrastructure problems, and staff need those reports triaged automatically instead of manually reading every submission.
+## Texnologiyalar
 
-## ✨ Features
+- Next.js 15, React 18, TypeScript
+- Supabase: PostgreSQL, Auth və Storage
+- Gemini API (server tərəfdə), DeepSeek isə konfiqurasiya olunduqda alternativ analiz provayderi kimi
+- Vercel
 
-- 📷 **Photo-based complaint submission** — citizens snap a photo of an issue instead of filling long forms
-- 🤖 **AI vision analysis** — an AI vision model classifies the complaint type and severity directly from the photo
-- 📍 **GPS detection** — automatically captures and attaches the citizen's location to each report
-- 🗂️ **Admin panel** — city staff view, filter, and manage incoming complaints by category/status
-- 🔍 **Citizen tracking** — residents can follow the status of their own submitted reports
+## Lokal işə salma
 
-## 🏗️ Architecture
-
-```
-┌──────────────┐     ┌──────────────────┐     ┌───────────────────┐
-│  Citizen App  │ ──▶ │  Vision AI model   │ ──▶ │  Classified &      │
-│  (photo + GPS)│     │  (complaint         │     │  categorized        │
-│                │     │  classification)    │     │  complaint record   │
-└──────────────┘     └──────────────────┘     └───────────────────┘
-                                                        │
-                                                        ▼
-                                              ┌───────────────────┐
-                                              │  Admin Dashboard    │
-                                              │  (review & resolve)  │
-                                              └───────────────────┘
-```
-
-- **Vision AI:** originally built on Claude Vision API, later migrated to free vision models via OpenRouter to keep operating costs low
-- **Frontend:** deployed on Vercel
-- **Data flow:** photo + GPS coordinates → AI classification → stored complaint record → admin review
-
-## 🛠️ Tech Stack
-
-![TypeScript](https://img.shields.io/badge/-TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)
-![Vercel](https://img.shields.io/badge/-Vercel-000000?style=flat-square&logo=vercel)
-![Claude](https://img.shields.io/badge/-Claude_Vision-D97757?style=flat-square&logo=claude&logoColor=white)
-![OpenRouter](https://img.shields.io/badge/-OpenRouter-000000?style=flat-square)
-
-## 🚀 Getting Started
+Tələblər: Node.js 20 və npm.
 
 ```bash
-# 1. Clone the repo
 git clone https://github.com/etikhacker/cityai.git
 cd cityai
-
-# 2. Install dependencies
 npm install
-
-# 3. Configure environment variables
-cp .env.example .env.local
 ```
 
-Fill in `.env.local`:
+Kök qovluqda `.env.local` yaradın və aşağıdakı dəyişənləri uyğun dəyərlərlə doldurun:
 
 ```env
-OPENROUTER_API_KEY=your_openrouter_api_key
-NEXT_PUBLIC_MAPS_API_KEY=your_maps_api_key   # if GPS/map rendering needs one
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+GEMINI_API_KEY=
+CITYAI_ADMIN_PASSWORD=
+CITYAI_SERVER_SECRET=
 ```
 
+`SUPABASE_SERVICE_ROLE_KEY` bəzi Supabase konfiqurasiyalarında `SUPABASE_SECRET_KEY` ilə əvəz oluna bilər. AI analiz üçün `GEMINI_API_KEY` tələb olunur. `DEEPSEEK_API_KEY` və `AI_PROVIDER` yalnız DeepSeek provayderindən istifadə ediləcəksə konfiqurasiya edilir.
+
+`CITYAI_SERVER_SECRET` ən azı 32 simvolluq, kriptoqrafik təsadüfi server sirri olmalıdır. Bu dəyərləri Git-ə əlavə etməyin, brauzerə ötürməyin və ictimai söhbətlərdə paylaşmayın. `NEXT_PUBLIC_` prefiksli dəyişənlər brauzerə açıq ola bilər; yalnız ictimai Supabase URL və anon/publishable açarı üçün istifadə edin.
+
+Sonra:
+
 ```bash
-# 4. Run the dev server
 npm run dev
 ```
 
-App runs at `http://localhost:3000`.
+Sayt [http://localhost:3000](http://localhost:3000) ünvanında açılacaq.
 
-## 📌 Status
+## Yoxlamalar
 
-Built for the ASAN AI Hub Challenge 2026 (April 2026 deadline) and submitted to the **ABB Innovation** incubation program.
+```bash
+npm test
+npx tsc --noEmit
+npm run lint
+npm run build
+```
 
-## 📄 License
+## Əsas səhifələr
 
-MIT
+- `/` — ana səhifə
+- `/muraciet` — müraciət yaratmaq
+- `/izle` — müraciəti izləmək
+- `/muqayise` — vəziyyət müqayisəsi
+- `/haqqimizda` — platforma haqqında
+- `/admin` — admin paneli
+
+## Təhlükəsizlik qeydi
+
+İstehsal mühitində Supabase migration-larını yalnız uyğun backup və ayrıca təsdiqlənmiş rollout planı ilə tətbiq edin. Secret-ləri client koduna, repozitoriyə və loglara daxil etməyin.
+
+## Lisenziya
+
+Repo daxilində ayrıca lisenziya faylı yoxlanılmayıb; istifadə və yayım hüquqları üçün repository sahibinə müraciət edin.
