@@ -93,3 +93,38 @@ async function readOne(db: ReturnType<typeof getSupabaseAdmin>, row: ComplaintRo
   return mapComplaint(row, analysis.data as unknown as Record<string, unknown> | undefined,
     (history.data || []) as unknown as Array<Record<string, unknown>>, (media.count || 0) > 0);
 }
+
+export async function updateComplaintStatus({
+  id,
+  status,
+  note,
+}: {
+  id: string;
+  status: ComplaintStatus;
+  note?: string | null;
+}): Promise<ComplaintRecord | null> {
+  if (!VALID_STATUSES.has(status)) throw new Error('Unsupported complaint status.');
+  const db = getSupabaseAdmin();
+  const { data: current, error: readError } = await db.from('muracietler')
+    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at')
+    .eq('id', id).maybeSingle();
+  if (readError) throw readError;
+  if (!current) return null;
+  const row = current as ComplaintRow;
+
+  const updatedAt = new Date().toISOString();
+  const { error: updateError } = await db.from('muracietler')
+    .update({ status, updated_at: updatedAt })
+    .eq('id', id);
+  if (updateError) throw updateError;
+
+  const { error: historyError } = await db.from('status_tarix').insert({
+    muraciet_id: id,
+    old_status: row.status,
+    new_status: status,
+    note: (note || '').trim() || STATUS_TITLES[status],
+  });
+  if (historyError) throw historyError;
+
+  return readOne(db, { ...row, status, updated_at: updatedAt });
+}

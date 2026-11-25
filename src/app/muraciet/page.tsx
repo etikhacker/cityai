@@ -22,6 +22,7 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
 import { CategoryIcon } from '@/components/StatusBadge';
 import { getSupabase } from '@/lib/supabase';
+import { saveTrackingCode } from '@/lib/local-tracking';
 import {
   CATEGORIES,
   PRIORITY_CONFIG,
@@ -282,6 +283,7 @@ export default function MuracietPage() {
       }
 
       setTrackingCode(data.tracking_code);
+      saveTrackingCode(data.tracking_code);
       setEmailSent(Boolean(data.email_sent));
     } catch (error) {
       if (uploadedMedia.length) await fetch('/api/uploads', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: uploadedMedia }) }).catch(() => undefined);

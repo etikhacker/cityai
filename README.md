@@ -32,7 +32,7 @@ AI nəticəsi ilkin təklifdir; yekun qiymətləndirməni məsul şəxslər apar
 `/admin` (və ehtiyat ünvan `/admin-cx7k9`) — `CITYAI_ADMIN_PASSWORD` ilə giriş:
 
 - Daxil olan müraciətlərin növbəsi, koda/kateqoriyaya görə axtarış
-- Status dəyişikliyi (baxış, icrada, həll olundu, rədd edildi) və tarixçəyə qeyd
+- Status dəyişikliyi (baxış, icrada, həll olundu, rədd edildi) — dəyişiklik dərhal bazaya və tarixçəyə yazılır
 - Media faylların baxışı, əvvəl/sonra müqayisəsi
 - Operator qeydləri
 
@@ -115,6 +115,7 @@ npm run build
 - `/` — ana səhifə
 - `/muraciet` — müraciət yaratmaq
 - `/izle` — müraciəti izləmək
+- `/profil` — bu brauzerdən göndərilmiş müraciətlərin kodları və statusları
 - `/muqayise` — vəziyyət müqayisəsi
 - `/haqqimizda` — platforma haqqında
 - `/admin` — admin paneli

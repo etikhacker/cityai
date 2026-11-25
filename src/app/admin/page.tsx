@@ -50,6 +50,8 @@ export default function AdminPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | ComplaintStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState('');
 
   const [beforeFile, setBeforeFile] = useState<File | null>(null);
   const [afterFile, setAfterFile] = useState<File | null>(null);
@@ -113,6 +115,30 @@ export default function AdminPage() {
       return true;
     });
   }, [complaints, searchQuery, statusFilter]);
+
+  const changeStatus = async (next: ComplaintStatus) => {
+    if (!selected || statusSaving) return;
+    setStatusSaving(true);
+    setStatusError('');
+    try {
+      const response = await fetch('/api/admin/complaints', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selected.id, status: next }),
+      });
+      const data = (await response.json()) as { complaint?: ComplaintRecord; error?: string };
+      if (!response.ok || !data.complaint) {
+        setStatusError(data.error || 'Status dəyişdirilə bilmədi.');
+        return;
+      }
+      const updated = data.complaint;
+      setComplaints((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    } catch {
+      setStatusError('Serverlə əlaqə alınmadı.');
+    } finally {
+      setStatusSaving(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -422,6 +448,42 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <StatusBadge status={selected.status} />
+                </div>
+
+                {/* Status idarəetməsi */}
+                <div className="rounded-[10px] border border-[#E2E8E8] bg-[#F8FAFC] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-[#102A35]">Statusu dəyiş</p>
+                    {statusSaving && (
+                      <span className="inline-flex items-center gap-1 text-xs text-[#64748B]">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        Saxlanılır...
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(['open', 'in_progress', 'resolved', 'rejected'] as ComplaintStatus[]).map((value) => {
+                      const active = selected.status === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          disabled={statusSaving || active}
+                          onClick={() => void changeStatus(value)}
+                          className={`inline-flex h-9 items-center rounded-lg border px-3 text-xs font-semibold transition-colors ${
+                            active
+                              ? 'border-[#087F70] bg-[#E6F5F1] text-[#07564F]'
+                              : 'border-[#E2E8E8] bg-white text-[#102A35] hover:bg-[#F1F5F5] disabled:opacity-50'
+                          }`}
+                        >
+                          {STATUS_CONFIG[value].label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {statusError && (
+                    <p role="alert" className="mt-2 text-xs font-medium text-[#B45309]">{statusError}</p>
+                  )}
                 </div>
 
                 {/* Details */}
