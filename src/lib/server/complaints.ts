@@ -11,7 +11,7 @@ const STATUS_TITLES: Record<ComplaintStatus, string> = {
 
 type ComplaintRow = {
   id: string; tracking_code: string; category: string; description: string | null; priority: string | null;
-  location: string | null; status: string | null; created_at: string; updated_at: string | null;
+  location: string | null; status: string | null; created_at: string; updated_at: string | null; assigned_department?: string | null;
 };
 
 function mapComplaint(row: ComplaintRow, analysisRow?: Record<string, unknown>, historyRows: Array<Record<string, unknown>> = [], hasMedia = false): ComplaintRecord {
@@ -44,13 +44,14 @@ function mapComplaint(row: ComplaintRow, analysisRow?: Record<string, unknown>, 
     location: row.location || 'Ünvan qeyd edilməyib', status,
     department: categoryInfo?.department || 'Şəhər İcra Hakimiyyəti Operativ Mərkəzi',
     created_at: row.created_at, updated_at: row.updated_at || row.created_at, analysis, comparison: null, timeline, has_media: hasMedia,
+    assigned_department: row.assigned_department ?? null,
   };
 }
 
 export async function readComplaintByTrackingCode(code: string): Promise<ComplaintRecord | null> {
   const db = getSupabaseAdmin();
   const { data: row, error } = await db.from('muracietler')
-    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at')
+    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at,assigned_department')
     .eq('tracking_code', code).maybeSingle();
   if (error) throw error;
   if (!row) return null;
@@ -60,7 +61,7 @@ export async function readComplaintByTrackingCode(code: string): Promise<Complai
 export async function readAllComplaintsForAdmin(limit = 500): Promise<ComplaintRecord[]> {
   const db = getSupabaseAdmin();
   const { data, error } = await db.from('muracietler')
-    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at')
+    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at,assigned_department')
     .order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   const rows = (data || []) as ComplaintRow[];
@@ -94,37 +95,53 @@ async function readOne(db: ReturnType<typeof getSupabaseAdmin>, row: ComplaintRo
     (history.data || []) as unknown as Array<Record<string, unknown>>, (media.count || 0) > 0);
 }
 
-export async function updateComplaintStatus({
+export async function updateComplaint({
   id,
   status,
+  department,
   note,
 }: {
   id: string;
-  status: ComplaintStatus;
+  status?: ComplaintStatus;
+  department?: string | null;
   note?: string | null;
 }): Promise<ComplaintRecord | null> {
-  if (!VALID_STATUSES.has(status)) throw new Error('Unsupported complaint status.');
+  if (status && !VALID_STATUSES.has(status)) throw new Error('Unsupported complaint status.');
+  if (!status && department === undefined) throw new Error('Nothing to update.');
+
   const db = getSupabaseAdmin();
   const { data: current, error: readError } = await db.from('muracietler')
-    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at')
+    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at,assigned_department')
     .eq('id', id).maybeSingle();
   if (readError) throw readError;
   if (!current) return null;
   const row = current as ComplaintRow;
 
   const updatedAt = new Date().toISOString();
-  const { error: updateError } = await db.from('muracietler')
-    .update({ status, updated_at: updatedAt })
-    .eq('id', id);
+  const patch: Record<string, unknown> = { updated_at: updatedAt };
+  if (status) patch.status = status;
+  if (department !== undefined) {
+    patch.assigned_department = department;
+    patch.assigned_at = department ? updatedAt : null;
+  }
+
+  const { error: updateError } = await db.from('muracietler').update(patch).eq('id', id);
   if (updateError) throw updateError;
 
-  const { error: historyError } = await db.from('status_tarix').insert({
-    muraciet_id: id,
-    old_status: row.status,
-    new_status: status,
-    note: (note || '').trim() || STATUS_TITLES[status],
-  });
-  if (historyError) throw historyError;
+  if (status && status !== row.status) {
+    const { error: historyError } = await db.from('status_tarix').insert({
+      muraciet_id: id,
+      old_status: row.status,
+      new_status: status,
+      note: (note || '').trim() || STATUS_TITLES[status],
+    });
+    if (historyError) throw historyError;
+  }
 
-  return readOne(db, { ...row, status, updated_at: updatedAt });
+  return readOne(db, {
+    ...row,
+    status: status ?? row.status,
+    updated_at: updatedAt,
+    assigned_department: department !== undefined ? department : row.assigned_department,
+  });
 }

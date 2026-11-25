@@ -115,7 +115,7 @@ npm run build
 - `/` — ana səhifə
 - `/muraciet` — müraciət yaratmaq
 - `/izle` — müraciəti izləmək
-- `/profil` — "İzləmə kodları": bu brauzerdən göndərilmiş müraciətlərin kodları və statusları
+- `/izleme-kodlari` — "İzləmə kodları": bu brauzerdən göndərilmiş müraciətlərin kodları və statusları (köhnə `/profil` bu ünvana yönləndirilir)
 - `/muqayise` — vəziyyət müqayisəsi
 - `/haqqimizda` — platforma haqqında
 - `/admin` — admin paneli

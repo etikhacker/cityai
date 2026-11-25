@@ -51,6 +51,10 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | ComplaintStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
+  const [assignedTo, setAssignedTo] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState('');
+  const [assignNotice, setAssignNotice] = useState('');
   const [statusError, setStatusError] = useState('');
 
   const [beforeFile, setBeforeFile] = useState<File | null>(null);
@@ -63,6 +67,9 @@ export default function AdminPage() {
 
   const selectComplaint = useCallback((item: ComplaintRecord) => {
     setSelectedId(item.id);
+    setAssignedTo(item.assigned_department ?? item.department);
+    setAssignError('');
+    setAssignNotice('');
     setBeforeFile(null);
     setAfterFile(null);
     setBeforePreview('');
@@ -139,6 +146,48 @@ export default function AdminPage() {
       setStatusSaving(false);
     }
   };
+
+  const assignDepartment = async () => {
+    if (!selected || !assignedTo.trim() || assigning) return;
+    setAssigning(true);
+    setAssignError('');
+    setAssignNotice('');
+    try {
+      const response = await fetch('/api/admin/complaints', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selected.id, department: assignedTo.trim() }),
+      });
+      const data = (await response.json()) as { complaint?: ComplaintRecord; error?: string };
+      if (!response.ok || !data.complaint) {
+        setAssignError(data.error || 'Qurum təyin edilə bilmədi.');
+        return;
+      }
+      const updated = data.complaint;
+      setComplaints((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setAssignNotice('Müraciət ' + (updated.assigned_department || 'quruma') + ' ünvanına yönləndirildi.');
+    } catch {
+      setAssignError('Serverlə əlaqə alınmadı.');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const departmentMailto = useMemo(() => {
+    if (!selected) return '';
+    const categoryLabel = CATEGORIES.find((entry) => entry.id === selected.category)?.label ?? selected.category;
+    const bodyText = [
+      'Müraciət kodu: ' + selected.tracking_code,
+      'Kateqoriya: ' + categoryLabel,
+      'Təcililik: ' + PRIORITY_CONFIG[selected.priority].label,
+      'Məkan: ' + selected.location,
+      '',
+      selected.description,
+      '',
+      'İzləmə linki: https://cityai-asan.vercel.app/izle?kod=' + selected.tracking_code,
+    ].join('\n');
+    return 'mailto:?subject=' + encodeURIComponent('CityAI müraciəti ' + selected.tracking_code) + '&body=' + encodeURIComponent(bodyText);
+  }, [selected]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -484,6 +533,46 @@ export default function AdminPage() {
                   {statusError && (
                     <p role="alert" className="mt-2 text-xs font-medium text-[#B45309]">{statusError}</p>
                   )}
+                </div>
+
+                {/* Məsul quruma yönləndirmə */}
+                <div className="rounded-[10px] border border-[#E2E8E8] bg-[#F8FAFC] p-3">
+                  <p className="text-xs font-semibold text-[#102A35]">Məsul quruma göndər</p>
+                  {selected.assigned_department && (
+                    <p className="mt-1 text-xs text-[#07564F]">
+                      Yönləndirilib: <span className="font-semibold">{selected.assigned_department}</span>
+                    </p>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <select
+                      value={assignedTo}
+                      onChange={(event) => { setAssignedTo(event.target.value); setAssignError(''); setAssignNotice(''); }}
+                      className="civic-input h-9 min-w-[240px] flex-1 px-2.5 text-xs"
+                      aria-label="Məsul qurum"
+                    >
+                      {[...new Set([selected.department, ...CATEGORIES.map((entry) => entry.department), assignedTo])]
+                        .filter(Boolean)
+                        .map((name) => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={assigning || !assignedTo.trim()}
+                      onClick={() => void assignDepartment()}
+                      className="inline-flex h-9 items-center rounded-lg bg-[#087F70] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#06695E] disabled:opacity-50"
+                    >
+                      {assigning ? 'Göndərilir...' : 'Təyin et'}
+                    </button>
+                    <a
+                      href={departmentMailto}
+                      className="inline-flex h-9 items-center rounded-lg border border-[#E2E8E8] bg-white px-3 text-xs font-semibold text-[#102A35] hover:bg-[#F1F5F5]"
+                    >
+                      E-poçtla göndər
+                    </a>
+                  </div>
+                  {assignError && <p role="alert" className="mt-2 text-xs font-medium text-[#B45309]">{assignError}</p>}
+                  {assignNotice && <p role="status" className="mt-2 text-xs font-medium text-[#087F70]">{assignNotice}</p>}
                 </div>
 
                 {/* Details */}

@@ -61,6 +61,7 @@ export default function MuracietPage() {
 
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState('');
+  const [coords, setCoords] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [trackingCode, setTrackingCode] = useState('');
@@ -204,9 +205,15 @@ export default function MuracietPage() {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLocation(
-          `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} (GPS koordinatı)`
-        );
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const accuracy = Math.round(pos.coords.accuracy);
+        setCoords({ lat, lng, accuracy });
+        setLocation((previous) => {
+          const withoutGps = previous.replace(/\s*(—\s*)?-?\d{1,3}\.\d+,\s*-?\d{1,3}\.\d+\s*\(GPS[^)]*\)\s*$/, '').trim();
+          const gpsText = `${lat.toFixed(5)}, ${lng.toFixed(5)} (GPS, ±${accuracy} m)`;
+          return withoutGps ? `${withoutGps} — ${gpsText}` : gpsText;
+        });
         setLocating(false);
       }, (error) => {
         setLocationError(error.code === error.PERMISSION_DENIED
@@ -214,7 +221,7 @@ export default function MuracietPage() {
           : 'GPS mövqeyi müəyyən edilə bilmədi. Ünvanı əl ilə daxil edin.');
         setLocating(false);
       },
-      { timeout: 6000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
   };
 
@@ -321,6 +328,7 @@ export default function MuracietPage() {
     });
     setMediaError('');
     setLocation('');
+    setCoords(null);
     setEmail('');
     setPhone('');
     setEmailSent(false);
@@ -779,8 +787,18 @@ export default function MuracietPage() {
                       </button>
                     </div>
                     <p className="mt-2 text-xs text-[#64748B]">
-                      GPS ünvanı müəyyən etmir; cari koordinatları əlavə edir.
+                      GPS ünvanı müəyyən etmir; cari koordinatları əlavə edir. Dəqiqlik `±` dəyəri ilə göstərilir.
                     </p>
+                    {coords && (
+                      <a
+                        href={`https://www.google.com/maps?q=${coords.lat},${coords.lng}`}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[#087F70] hover:underline"
+                      >
+                        Xəritədə yoxla (±{coords.accuracy} m)
+                      </a>
+                    )}
                     {locationError && <p role="status" className="mt-1 text-xs font-medium text-[#B45309]">{locationError}</p>}
                   </div>
                 </div>

@@ -48,6 +48,7 @@ export type ComplaintRecord = {
   location: string;
   status: ComplaintStatus;
   department: string;
+  assigned_department?: string | null;
   created_at: string;
   updated_at: string;
   analysis: CityAnalysis | null;

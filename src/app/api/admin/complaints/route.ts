@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hasAdminSession, sameOrigin } from '@/lib/server/admin-auth';
-import { readAllComplaintsForAdmin, updateComplaintStatus } from '@/lib/server/complaints';
+import { readAllComplaintsForAdmin, updateComplaint } from '@/lib/server/complaints';
 import { applyRateLimit } from '@/lib/server/rate-limit';
 
 export const runtime = 'nodejs';
@@ -29,19 +29,27 @@ export async function PATCH(request: NextRequest) {
   if (!sameOrigin(request)) return NextResponse.json({ error: 'Sorğunun mənbəyi qəbul edilmir.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
 
   try {
-    const body = (await request.json().catch(() => null)) as { id?: unknown; status?: unknown; note?: unknown } | null;
+    const body = (await request.json().catch(() => null)) as { id?: unknown; status?: unknown; note?: unknown; department?: unknown } | null;
     const id = typeof body?.id === 'string' ? body.id : '';
-    const status = typeof body?.status === 'string' ? body.status : '';
+    const status = typeof body?.status === 'string' && body.status ? body.status : undefined;
     const note = typeof body?.note === 'string' ? body.note.slice(0, 300) : null;
+    const department = typeof body?.department === 'string' ? body.department.trim().slice(0, 160) : undefined;
 
     if (!UUID_PATTERN.test(id)) return NextResponse.json({ error: 'Müraciət identifikatoru etibarlı deyil.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
-    if (!ADMIN_STATUSES.has(status)) return NextResponse.json({ error: 'Status dəyəri etibarlı deyil.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    if (status && !ADMIN_STATUSES.has(status)) return NextResponse.json({ error: 'Status dəyəri etibarlı deyil.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    if (department === '') return NextResponse.json({ error: 'Qurum adı boş ola bilməz.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    if (!status && department === undefined) return NextResponse.json({ error: 'Yenilənəcək sahə göstərilməyib.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
 
-    const complaint = await updateComplaintStatus({ id, status: status as 'open' | 'in_progress' | 'resolved' | 'rejected', note });
+    const complaint = await updateComplaint({
+      id,
+      status: status as 'open' | 'in_progress' | 'resolved' | 'rejected' | undefined,
+      department,
+      note,
+    });
     if (!complaint) return NextResponse.json({ error: 'Müraciət tapılmadı.' }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
     return NextResponse.json({ complaint }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    console.error('[CityAI admin status]', error instanceof Error ? error.message : 'Unknown status update error');
-    return NextResponse.json({ error: 'Status yenilənərkən xəta baş verdi.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
+    console.error('[CityAI admin update]', error instanceof Error ? error.message : 'Unknown admin update error');
+    return NextResponse.json({ error: 'Müraciət yenilənərkən xəta baş verdi.' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 }
