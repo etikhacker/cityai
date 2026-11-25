@@ -115,7 +115,7 @@ export default function ProfilePage() {
               {entries.map((item) => (
                 <li key={item.code} className="civic-surface flex flex-wrap items-center gap-3 rounded-[12px] px-4 py-3.5">
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono-tabular text-sm font-bold text-[#087F70]">{item.code}</p>
+                    <p className="font-mono-tabular text-sm font-bold break-all text-[#087F70]">{item.code}</p>
                     <p className="mt-0.5 text-xs text-[#64748B]">
                       {formatAzDate(item.createdAt ?? new Date(item.savedAt).toISOString())}
                       {item.missing ? ' · bu kodla müraciət tapılmadı' : ''}

@@ -49,6 +49,8 @@ export type ComplaintRecord = {
   status: ComplaintStatus;
   department: string;
   assigned_department?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
   created_at: string;
   updated_at: string;
   analysis: CityAnalysis | null;

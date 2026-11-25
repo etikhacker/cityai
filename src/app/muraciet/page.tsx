@@ -23,6 +23,7 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { CategoryIcon } from '@/components/StatusBadge';
 import { getSupabase } from '@/lib/supabase';
 import { saveTrackingCode } from '@/lib/local-tracking';
+import { formatAzPhone } from '@/lib/format';
 import {
   CATEGORIES,
   PRIORITY_CONFIG,
@@ -825,9 +826,11 @@ export default function MuracietPage() {
                     <input
                       id="complaint-phone"
                       type="tel"
+                      inputMode="tel"
                       autoComplete="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
+                      onBlur={(e) => setPhone(formatAzPhone(e.target.value))}
                       placeholder="+994 50 000 00 00"
                       className="civic-input mt-2 h-12 w-full px-3.5 text-sm"
                     />

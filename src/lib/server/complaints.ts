@@ -11,7 +11,7 @@ const STATUS_TITLES: Record<ComplaintStatus, string> = {
 
 type ComplaintRow = {
   id: string; tracking_code: string; category: string; description: string | null; priority: string | null;
-  location: string | null; status: string | null; created_at: string; updated_at: string | null; assigned_department?: string | null;
+  location: string | null; status: string | null; created_at: string; updated_at: string | null; assigned_department?: string | null; contact_email?: string | null; contact_phone?: string | null;
 };
 
 function mapComplaint(row: ComplaintRow, analysisRow?: Record<string, unknown>, historyRows: Array<Record<string, unknown>> = [], hasMedia = false): ComplaintRecord {
@@ -45,13 +45,15 @@ function mapComplaint(row: ComplaintRow, analysisRow?: Record<string, unknown>, 
     department: categoryInfo?.department || 'Şəhər İcra Hakimiyyəti Operativ Mərkəzi',
     created_at: row.created_at, updated_at: row.updated_at || row.created_at, analysis, comparison: null, timeline, has_media: hasMedia,
     assigned_department: row.assigned_department ?? null,
+    contact_email: row.contact_email ?? null,
+    contact_phone: row.contact_phone ?? null,
   };
 }
 
 export async function readComplaintByTrackingCode(code: string): Promise<ComplaintRecord | null> {
   const db = getSupabaseAdmin();
   const { data: row, error } = await db.from('muracietler')
-    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at,assigned_department')
+    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at,assigned_department,contact_email,contact_phone')
     .eq('tracking_code', code).maybeSingle();
   if (error) throw error;
   if (!row) return null;
@@ -61,7 +63,7 @@ export async function readComplaintByTrackingCode(code: string): Promise<Complai
 export async function readAllComplaintsForAdmin(limit = 500): Promise<ComplaintRecord[]> {
   const db = getSupabaseAdmin();
   const { data, error } = await db.from('muracietler')
-    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at,assigned_department')
+    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at,assigned_department,contact_email,contact_phone')
     .order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   const rows = (data || []) as ComplaintRow[];
@@ -111,7 +113,7 @@ export async function updateComplaint({
 
   const db = getSupabaseAdmin();
   const { data: current, error: readError } = await db.from('muracietler')
-    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at,assigned_department')
+    .select('id,tracking_code,category,description,priority,location,status,created_at,updated_at,assigned_department,contact_email,contact_phone')
     .eq('id', id).maybeSingle();
   if (readError) throw readError;
   if (!current) return null;

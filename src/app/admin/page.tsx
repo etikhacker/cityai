@@ -11,6 +11,8 @@ import {
   Lock,
   LogOut,
   MapPin,
+  Mail,
+  Phone,
   Search,
   ShieldCheck,
   Sparkles,
@@ -27,6 +29,7 @@ import {
   type ComplaintRecord,
   type ComplaintStatus,
 } from '@/lib/types';
+import { formatAzPhone, telHref } from '@/lib/format';
 
 const FILTER_OPTIONS: Array<{ value: 'all' | ComplaintStatus; label: string }> = [
   { value: 'all', label: 'Hamısı' },
@@ -448,7 +451,7 @@ export default function AdminPage() {
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono-tabular text-xs font-bold text-[#087F70]">
+                        <span className="font-mono-tabular text-xs font-bold break-all text-[#087F70]">
                           #{item.tracking_code}
                         </span>
                         <StatusBadge status={item.status} />
@@ -483,7 +486,7 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono-tabular text-sm font-bold text-[#087F70]">
+                        <span className="font-mono-tabular break-all text-sm font-bold text-[#087F70]">
                           #{selected.tracking_code}
                         </span>
                         <span className="text-xs text-[#64748B]">
@@ -547,7 +550,7 @@ export default function AdminPage() {
                     <select
                       value={assignedTo}
                       onChange={(event) => { setAssignedTo(event.target.value); setAssignError(''); setAssignNotice(''); }}
-                      className="civic-input h-9 min-w-[240px] flex-1 px-2.5 text-xs"
+                      className="civic-input h-9 w-full min-w-0 flex-1 px-2.5 text-xs sm:w-auto"
                       aria-label="Məsul qurum"
                     >
                       {[...new Set([selected.department, ...CATEGORIES.map((entry) => entry.department), assignedTo])]
@@ -589,6 +592,29 @@ export default function AdminPage() {
                       {selected.department}
                     </span>
                   </div>
+
+                  {(selected.contact_phone || selected.contact_email) && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {selected.contact_phone && (
+                        <a
+                          href={'tel:' + telHref(selected.contact_phone)}
+                          className="font-mono-tabular inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8E8] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#102A35] hover:bg-[#F1F5F5]"
+                        >
+                          <Phone className="h-3.5 w-3.5 text-[#087F70]" aria-hidden="true" />
+                          {formatAzPhone(selected.contact_phone)}
+                        </a>
+                      )}
+                      {selected.contact_email && (
+                        <a
+                          href={'mailto:' + selected.contact_email}
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-[#E2E8E8] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#102A35] hover:bg-[#F1F5F5]"
+                        >
+                          <Mail className="h-3.5 w-3.5 shrink-0 text-[#087F70]" aria-hidden="true" />
+                          <span className="truncate">{selected.contact_email}</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Before / After AI Verification inside Operator Panel */}
