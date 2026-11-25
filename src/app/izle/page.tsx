@@ -131,7 +131,7 @@ function TrackingContent() {
               type="text"
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-              placeholder="İzləmə kodu (MZB- ilə başlayır)"
+              placeholder="İzləmə kodu (AZE- ilə başlayır)"
               aria-label="İzləmə kodu"
               className="civic-input font-mono-tabular h-12 w-full pr-4 pl-10 text-sm tracking-wide uppercase"
             />
@@ -146,7 +146,7 @@ function TrackingContent() {
         </form>
 
         <div className="mt-4 border-t border-[#E2E8E8] pt-3.5 text-xs leading-relaxed text-[#64748B]">
-          Yeni izləmə kodu MZB- prefiksindən sonra 32 simvoldan ibarətdir. Köhnə MZB-XXXXXX kodları da qəbul olunur.
+          Yeni izləmə kodu AZE- prefiksindən sonra 32 simvoldan ibarətdir. Köhnə MZB- ilə başlayan kodlar da qəbul olunur.
         </div>
       </section>
 

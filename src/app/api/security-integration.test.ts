@@ -99,6 +99,19 @@ describe('security-sensitive API integrations', () => {
     expect(await response.json()).toHaveProperty('complaint.tracking_code');
   });
 
+  it('accepts both the AZE and the legacy MZB tracking prefixes', async () => {
+    mocks.readComplaint.mockResolvedValue({ tracking_code: 'AZE-0123456789ABCDEF0123456789ABCDEF', description: 'Pothole' });
+    const aze = await trackingGet(new NextRequest('https://cityai.test/api/complaints?code=AZE-0123456789ABCDEF0123456789ABCDEF'));
+    expect(aze.status).toBe(200);
+
+    mocks.readComplaint.mockResolvedValue({ tracking_code: 'MZB-9BE8C6', description: 'Legacy' });
+    const legacy = await trackingGet(new NextRequest('https://cityai.test/api/complaints?code=MZB-9BE8C6'));
+    expect(legacy.status).toBe(200);
+
+    const rejected = await trackingGet(new NextRequest('https://cityai.test/api/complaints?code=ABC-0123456789ABCDEF0123456789ABCDEF'));
+    expect(rejected.status).toBe(400);
+  });
+
   it('issues signed private media uploads then submits their proof and AI metadata', async () => {
     mocks.storageCreateSignedUploadUrl.mockImplementation(async (path: string) => ({ data: { path, token: 'signed-token' }, error: null }));
     mocks.storageList.mockImplementation(async (_prefix: string, options: { search: string }) => ({ data: [{ name: options.search, metadata: { size: 2048 } }], error: null }));
@@ -122,7 +135,11 @@ describe('security-sensitive API integrations', () => {
       }),
     }));
     expect(submitResponse.status).toBe(201);
-    expect(mocks.complaintInsert).toHaveBeenCalledWith(expect.objectContaining({ category: 'yol', location: 'Bakı' }));
+    expect(mocks.complaintInsert).toHaveBeenCalledWith(expect.objectContaining({
+      category: 'yol',
+      location: 'Bakı',
+      tracking_code: expect.stringMatching(/^AZE-[A-F0-9]{32}$/),
+    }));
     expect(mocks.childInsert).toHaveBeenCalledTimes(3);
   });
 

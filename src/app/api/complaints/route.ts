@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const limited = await applyRateLimit(request, 'tracking', 20, 60_000);
   if (limited) return limited;
   const code = request.nextUrl.searchParams.get('code')?.trim().toUpperCase().replace(/^#/, '');
-  if (!code || !/^(?:MZB-[A-Z0-9]{6}|MZB-[A-F0-9]{32})$/.test(code)) {
+  if (!code || !/^(?:(?:AZE|MZB)-[A-Z0-9]{6}|(?:AZE|MZB)-[A-F0-9]{32})$/.test(code)) {
     return NextResponse.json({ error: 'Düzgün izləmə kodu daxil edin.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
 

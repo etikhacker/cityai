@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     uploadedPaths = verifiedMedia.map((item) => item.path);
-    const trackingCode = `MZB-${randomBytes(16).toString('hex').toUpperCase()}`;
+    const trackingCode = `AZE-${randomBytes(16).toString('hex').toUpperCase()}`;
     const { data: complaint, error: complaintError } = await db.from('muracietler').insert({
       tracking_code: trackingCode, category, description: description.trim(), priority,
       location: location.trim() || null, status: 'open',
