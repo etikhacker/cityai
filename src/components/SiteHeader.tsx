@@ -20,7 +20,8 @@ export function SiteHeader() {
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     if (href.startsWith('/#')) return false;
-    return pathname?.startsWith(href);
+    // Dəqiq uyğunluq: '/izle' prefiksi '/izleme-kodlari'-ni də tutmasın.
+    return pathname === href || pathname?.startsWith(href + '/');
   };
 
   return (
