@@ -67,9 +67,9 @@ export default function ProfilePage() {
       <SiteHeader />
       <main className="mx-auto w-full max-w-[1040px] flex-1 px-4 py-10 sm:px-6 lg:px-8">
         <div className="border-b border-[#E2E8E8] pb-6">
-          <p className="text-sm font-semibold text-[#087F70]">Profil</p>
+          <p className="text-sm font-semibold text-[#087F70]">İzləmə kodları</p>
           <h1 className="font-display mt-1.5 text-3xl font-bold tracking-[-0.025em] text-[#102A35] sm:text-4xl">
-            Müraciət kodlarım
+            İzləmə kodlarım
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#475569] sm:text-base">
             Bu brauzerdən göndərdiyiniz müraciətlərin izləmə kodları burada saxlanılır. Kodlar yalnız bu cihazda

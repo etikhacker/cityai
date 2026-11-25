@@ -11,7 +11,7 @@ const NAV_LINKS = [
   { href: '/#proses', label: 'Necə işləyir?' },
   { href: '/muraciet', label: 'Müraciət et' },
   { href: '/izle', label: 'Müraciətimi izlə' },
-  { href: '/profil', label: 'Profil' },
+  { href: '/profil', label: 'İzləmə kodları' },
   { href: '/haqqimizda', label: 'Haqqımızda' },
 ];
 
