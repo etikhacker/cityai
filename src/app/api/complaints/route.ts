@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readComplaintByTrackingCode } from '@/lib/server/complaints';
 import { applyRateLimit } from '@/lib/server/rate-limit';
+import { isValidTrackingCode, normalizeTrackingCode } from '@/lib/tracking-code';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -8,8 +9,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const limited = await applyRateLimit(request, 'tracking', 20, 60_000);
   if (limited) return limited;
-  const code = request.nextUrl.searchParams.get('code')?.trim().toUpperCase().replace(/^#/, '');
-  if (!code || !/^(?:(?:AZE|MZB)-[A-Z0-9]{6}|(?:AZE|MZB)-[A-F0-9]{32})$/.test(code)) {
+  const rawCode = request.nextUrl.searchParams.get('code')?.replace(/^#/, '') ?? '';
+  const code = normalizeTrackingCode(rawCode);
+  if (!code || !isValidTrackingCode(code)) {
     return NextResponse.json({ error: 'Düzgün izləmə kodu daxil edin.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
 

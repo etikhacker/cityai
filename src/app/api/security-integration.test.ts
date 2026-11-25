@@ -138,7 +138,7 @@ describe('security-sensitive API integrations', () => {
     expect(mocks.complaintInsert).toHaveBeenCalledWith(expect.objectContaining({
       category: 'yol',
       location: 'Bakı',
-      tracking_code: expect.stringMatching(/^AZE-[A-F0-9]{32}$/),
+      tracking_code: expect.stringMatching(/^AZE-[2-9A-HJ-NP-Z]{8}$/),
     }));
     expect(mocks.childInsert).toHaveBeenCalledTimes(3);
   });

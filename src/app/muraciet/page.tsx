@@ -54,6 +54,9 @@ export default function MuracietPage() {
   const [priority, setPriority] = useState<PriorityLevel>('medium');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
 
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState('');
@@ -259,6 +262,8 @@ export default function MuracietPage() {
           description: description.trim(),
           priority,
           location: location.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
           analysis,
           media: uploadedMedia,
         }),
@@ -266,6 +271,7 @@ export default function MuracietPage() {
       const data = (await res.json()) as {
         success?: boolean;
         tracking_code?: string;
+        email_sent?: boolean;
         error?: string;
       };
 
@@ -276,6 +282,7 @@ export default function MuracietPage() {
       }
 
       setTrackingCode(data.tracking_code);
+      setEmailSent(Boolean(data.email_sent));
     } catch (error) {
       if (uploadedMedia.length) await fetch('/api/uploads', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: uploadedMedia }) }).catch(() => undefined);
       setSubmitError(error instanceof Error ? error.message : 'Server ilə əlaqə zamanı xəta baş verdi. Yenidən yoxlayın.');
@@ -312,6 +319,9 @@ export default function MuracietPage() {
     });
     setMediaError('');
     setLocation('');
+    setEmail('');
+    setPhone('');
+    setEmailSent(false);
     setSubmitError('');
     setTrackingCode('');
   };
@@ -370,6 +380,12 @@ export default function MuracietPage() {
                 )}
               </button>
             </div>
+
+            {emailSent && (
+              <p className="mx-auto mt-3 max-w-sm text-xs font-medium text-[#087F70]">
+                İzləmə kodu e-poçt ünvanınıza da göndərildi.
+              </p>
+            )}
 
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
@@ -765,6 +781,40 @@ export default function MuracietPage() {
                     </p>
                     {locationError && <p role="status" className="mt-1 text-xs font-medium text-[#B45309]">{locationError}</p>}
                   </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="complaint-email" className="block text-[13px] font-semibold text-[#102A35]">
+                      E-poçt <span className="font-normal text-[#64748B]">(istəyə bağlı)</span>
+                    </label>
+                    <input
+                      id="complaint-email"
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="ad@example.com"
+                      className="civic-input mt-2 h-12 w-full px-3.5 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="complaint-phone" className="block text-[13px] font-semibold text-[#102A35]">
+                      Telefon <span className="font-normal text-[#64748B]">(istəyə bağlı)</span>
+                    </label>
+                    <input
+                      id="complaint-phone"
+                      type="tel"
+                      autoComplete="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+994 50 000 00 00"
+                      className="civic-input mt-2 h-12 w-full px-3.5 text-sm"
+                    />
+                  </div>
+                  <p className="text-xs leading-relaxed text-[#64748B] sm:col-span-2">
+                    E-poçt yazsanız, izləmə kodu ora da göndəriləcək. Telefon nömrəsi yalnız operatorun əlaqə saxlaması üçün saxlanılır.
+                  </p>
                 </div>
               </div>
             </section>

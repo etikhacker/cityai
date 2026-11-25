@@ -4,6 +4,8 @@ import { applyRateLimit, hasOversizedBody } from '@/lib/server/rate-limit';
 import { getSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { verifyMediaProof } from '@/lib/server/media-proof';
 import { sameOrigin } from '@/lib/server/admin-auth';
+import { sendTrackingCodeEmail } from '@/lib/server/email';
+import { buildTrackingCode, TRACKING_CODE_LENGTH } from '@/lib/tracking-code';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,6 +16,58 @@ const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/hei
 const VIDEO_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
 const MAX_BODY_BYTES = 12 * 1024;
 const MAX_MEDIA = 5;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const PHONE_PATTERN = /^\+?[0-9\s()-]{7,32}$/;
+
+type ComplaintInput = {
+  category: string;
+  description: string;
+  priority: string;
+  location: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+};
+
+function newTrackingCode() {
+  return buildTrackingCode(randomBytes(TRACKING_CODE_LENGTH));
+}
+
+async function insertComplaint(db: ReturnType<typeof getSupabaseAdmin>, input: ComplaintInput) {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const trackingCode = newTrackingCode();
+    const row: Record<string, unknown> = {
+      tracking_code: trackingCode,
+      category: input.category,
+      description: input.description,
+      priority: input.priority,
+      location: input.location,
+      status: 'open',
+      contact_email: input.contactEmail,
+      contact_phone: input.contactPhone,
+    };
+
+    let { data, error } = await db.from('muracietler').insert(row).select('id').single();
+
+    // Köhnə sxem: contact sütunları hələ yoxdursa, müraciəti onlarsız yaz.
+    if (error && (error as { code?: string }).code === '42703') {
+      const fallback = { ...row };
+      delete fallback.contact_email;
+      delete fallback.contact_phone;
+      const retry = await db.from('muracietler').insert(fallback).select('id').single();
+      data = retry.data;
+      error = retry.error;
+    }
+
+    if (!error && data?.id) return { trackingCode, id: data.id as string };
+
+    lastError = error;
+    if ((error as { code?: string } | null)?.code !== '23505') throw error;
+  }
+
+  throw lastError ?? new Error('Complaint could not be created.');
+}
 
 function safeAnalysis(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -43,11 +97,15 @@ export async function POST(request: NextRequest) {
   let mediaLinkConflict = false;
   try {
     const body = await request.json();
-    const { category, description, priority, location, analysis, media } = body ?? {};
+    const { category, description, priority, location, analysis, media, email, phone } = body ?? {};
     if (typeof category !== 'string' || !CATEGORIES.has(category)) return NextResponse.json({ error: 'Problem kateqoriyasını yoxlayın.' }, { status: 400 });
     if (typeof description !== 'string' || !description.trim() || description.trim().length > 500) return NextResponse.json({ error: 'Təsvir 1–500 simvol olmalıdır.' }, { status: 400 });
     if (typeof priority !== 'string' || !PRIORITIES.has(priority)) return NextResponse.json({ error: 'Təciliyi yoxlayın.' }, { status: 400 });
     if (typeof location !== 'string' || location.length > 300) return NextResponse.json({ error: 'Məkan məlumatı çox uzundur.' }, { status: 400 });
+    const contactEmail = typeof email === 'string' && email.trim() ? email.trim() : null;
+    const contactPhone = typeof phone === 'string' && phone.trim() ? phone.trim() : null;
+    if (contactEmail && (contactEmail.length > 254 || !EMAIL_PATTERN.test(contactEmail))) return NextResponse.json({ error: 'E-poçt ünvanını yoxlayın.' }, { status: 400 });
+    if (contactPhone && !PHONE_PATTERN.test(contactPhone)) return NextResponse.json({ error: 'Telefon nömrəsini yoxlayın.' }, { status: 400 });
     if (analysis != null && !safeAnalysis(analysis)) return NextResponse.json({ error: 'AI təhlil məlumatı etibarlı deyil.' }, { status: 400 });
     if (!Array.isArray(media) || media.length > MAX_MEDIA) return NextResponse.json({ error: 'Media fayllarının sayını yoxlayın.' }, { status: 400 });
 
@@ -94,13 +152,15 @@ export async function POST(request: NextRequest) {
     }
 
     uploadedPaths = verifiedMedia.map((item) => item.path);
-    const trackingCode = `AZE-${randomBytes(16).toString('hex').toUpperCase()}`;
-    const { data: complaint, error: complaintError } = await db.from('muracietler').insert({
-      tracking_code: trackingCode, category, description: description.trim(), priority,
-      location: location.trim() || null, status: 'open',
-    }).select('id').single();
-    if (complaintError || !complaint?.id) throw complaintError || new Error('Complaint could not be created.');
-    createdId = complaint.id;
+    const { trackingCode, id: complaintId } = await insertComplaint(db, {
+      category,
+      description: description.trim(),
+      priority,
+      location: location.trim() || null,
+      contactEmail,
+      contactPhone,
+    });
+    createdId = complaintId;
 
     if (safe) {
       const { error } = await db.from('ai_analizler').insert({
@@ -123,7 +183,14 @@ export async function POST(request: NextRequest) {
     });
     if (historyError) throw historyError;
 
-    return NextResponse.json({ success: true, tracking_code: trackingCode }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+    const emailResult = contactEmail
+      ? await sendTrackingCodeEmail({ to: contactEmail, code: trackingCode, category })
+      : { sent: false };
+
+    return NextResponse.json(
+      { success: true, tracking_code: trackingCode, email_sent: emailResult.sent },
+      { status: 201, headers: { 'Cache-Control': 'no-store' } },
+    );
   } catch (error) {
     if (createdId) {
       const db = getSupabaseAdmin();

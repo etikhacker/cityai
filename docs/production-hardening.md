@@ -16,6 +16,10 @@ Use Vercel project settings for production values; never commit them.
 | `AI_PROVIDER` | Optional. `deepseek` or `gemini`. When unset, DeepSeek is used if `DEEPSEEK_API_KEY` exists, otherwise Gemini. |
 | `DEEPSEEK_API_KEY` | Server-only DeepSeek credential for image analysis and before/after comparison. |
 | `DEEPSEEK_MODEL` | Optional DeepSeek model id; default is `deepseek-flash`, the only current model that accepts image input. |
+| `RESEND_API_KEY` | Optional. When set, the tracking code is e-mailed to the address the citizen provides. Absent key means the code is only shown on screen. |
+| `CITYAI_EMAIL_FROM` | Optional verified Resend sender, for example `CityAI <kod@your-domain.az>`. Required together with `RESEND_API_KEY`. |
+
+Contact details are stored in `muracietler.contact_email` and `muracietler.contact_phone` (migration `20261125200000_cityai_complaint_contact.sql`). The submit route falls back to inserting without these columns when the migration has not been applied yet, so a stale schema cannot block submissions.
 
 Video analysis is currently disabled at the API layer (`VIDEO_ANALYSIS_DISABLED`): DeepSeek has no video input, so `/api/analyze` accepts images only and the UI no longer offers video for AI analysis. Re-enable it only together with a provider that accepts video.
 
